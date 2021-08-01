@@ -29,7 +29,9 @@ jobs:
 
       - name: Build x64 Binary
         run: electronize build /target linux
+
       - name: Check Binaries
         run: ls bin/Desktop/
+
       - name: Rename x64 Binary
-        run: mv "bin/Desktop/RpgNotes.Desktop" "bin/Desktop/RpgNotes.Linux.x64"
+        run: mv "bin/Desktop/RpgNotes.Desktop-1.0.0.AppImage" "bin/Desktop/RpgNotes.Linux.x64.AppImage"

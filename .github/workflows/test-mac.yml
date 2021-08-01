@@ -32,4 +32,4 @@ jobs:
       - name: Check Binaries
         run: ls bin/Desktop/
       - name: Rename x64 Binary
-        run: mv "bin/Desktop/RpgNotes.Desktop" "bin/Desktop/RpgNotes.Mac.x64"
+        run: mv "bin/Desktop/RpgNotes.Desktop-1.0.0-mac.zip" "bin/Desktop/RpgNotes.Mac.x64.zip"
