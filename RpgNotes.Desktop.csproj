@@ -1,6 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
+    <PackageId>RpgNotes.Desktop</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Colin Halseth</Authors>
   </PropertyGroup>
   <ItemGroup>
     <Content Update="electron.manifest.json">
