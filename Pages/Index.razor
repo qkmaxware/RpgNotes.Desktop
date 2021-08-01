@@ -23,7 +23,7 @@
 </div>
 
 <Modal Title="Load World" OnClose=closeLoad Visible=@showLoadModal>
-    <FileExplorer EditFilename=false Pattern="\.worldx$" OnFileSelected=loadSaveFile></FileExplorer>
+    <FileExplorer EditFilename=false Pattern=@FileNameExtensionPattern OnFileSelected=loadSaveFile></FileExplorer>
 </Modal>
 
 <Modal Title="New World" OnClose=closeNew Visible=@showNewModal>
@@ -60,6 +60,7 @@
 </Modal>
 
 @code {
+    private static string FileNameExtensionPattern => @"\" + FileManager.SaveFileExtension + "$";
     private static List<RpgSystem> systems = RpgSystem.FindRpgSystems();
 
     protected override void OnInitialized() {
