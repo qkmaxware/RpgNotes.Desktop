@@ -35,4 +35,4 @@ jobs:
       - name: Build x64 Binary
         run: electronize build /target osx
       - name: Rename x64 Binary
-        run mv "bin/Desktop/RpgNotes.Desktop" "bin/Desktop/RpgNotes.Mac.x64"
+        run: mv "bin/Desktop/RpgNotes.Desktop" "bin/Desktop/RpgNotes.Mac.x64"

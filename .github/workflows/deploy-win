@@ -35,12 +35,12 @@ jobs:
       - name: Build x64 Binary
         run: electronize build /target win
       - name: Rename x64 Binary
-        run Rename-Item -Path "bin/Desktop/RpgNotes.Desktop 1.0.0.exe" -NewName RpgNotes.Windows.x64.exe
+        run: Rename-Item -Path "bin/Desktop/RpgNotes.Desktop 1.0.0.exe" -NewName RpgNotes.Windows.x64.exe
 
       - name: Build x86 Binary
         run: electronize build /target custom "win7-x86;win32" /electron-arch ia32 
       - name: Rename x86 Binary
-        run Rename-Item -Path "bin/Desktop/RpgNotes.Desktop 1.0.0.exe" -NewName RpgNotes.Windows.x86.exe
+        run: Rename-Item -Path "bin/Desktop/RpgNotes.Desktop 1.0.0.exe" -NewName RpgNotes.Windows.x86.exe
 
       - name: Push x64 Binary
         uses: svenstaro/upload-release-action@v2
