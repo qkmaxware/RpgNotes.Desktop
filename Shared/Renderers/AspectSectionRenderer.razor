@@ -1,0 +1,18 @@
+@if (!string.IsNullOrEmpty(Section.Name)) {
+<div class="w3-border-bottom w3-margin-bottom">
+    @Section.Name
+</div>
+}
+<div class="w3-row-padding">
+    @if (Section.Aspects != null) {
+        foreach (var aspect in Section.Aspects) {
+            <div class="w3-margin-bottom w3-col s@((int)Section.Layout)">
+                <AspectRenderer Aspect=aspect></AspectRenderer>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public AspectSection Section {get; set;}
+}

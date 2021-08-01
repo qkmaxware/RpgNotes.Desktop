@@ -1,0 +1,30 @@
+@if (Sheet != null) {
+<div class="">
+    @if (Sheet.Rows != null) {
+        foreach (var row in Sheet.Rows) {
+        <div class="w3-row-padding w3-margin-bottom">
+            @if (row.Blocks != null) {
+                foreach (var block in row.Blocks) {
+                    <div class="w3-margin-bottom w3-col l@((int)row.Layout)">
+                        @if (!string.IsNullOrEmpty(block.Name)) {
+                        <div class="w3-padding well">
+                            @block.Name
+                        </div>
+                        }
+                        @if (block.Sections != null) {
+                            foreach (var section in block.Sections) {
+                                <AspectSectionRenderer Section=section></AspectSectionRenderer>
+                            }
+                        }
+                    </div>
+                }
+            }
+        </div>
+        }
+    }
+</div>
+}
+
+@code {
+    [Parameter] public CharacterSheet Sheet {get; set;}
+}

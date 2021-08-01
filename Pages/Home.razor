@@ -1,0 +1,195 @@
+@inject NavigationManager nav
+@inject FileManager files
+@inject Notifier notify
+@using Data.Templates
+@using RpgNotes.Desktop.Shared.Layouts
+@page "/home"
+
+<Navigator>
+    @*
+    // IDK if I NEED this yet
+    <button class="w3-button w3-bar-item header">Create</button>
+    <button class="w3-button w3-bar-item">Browse</button>*@
+</Navigator>
+
+<TabPanel>
+    <TabPage Title="Active Campaigns">
+        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; overflow-x: auto;">
+            <div class="w3-padding" style="display: inline-block;">
+                <div class="w3-button w3-round-large w3-display-container article-preview-container border dashed" style="width: 120px; height: 120px" @onclick=@(() => tryAddCampaign())>
+                    <div class="w3-display-middle">
+                        +
+                    </div>
+                </div>
+            </div>
+            @if (world != null) {
+                foreach (var campaign in world.Articles.EnumerateCampaigns().Where(c => (c["Active"]?.AsBool() ?? false) == true)) {
+                    <div class="w3-padding" style="display: inline-block;">
+                        <div class="w3-border w3-round-large w3-display-container article-preview-container well" style="width: 120px; height: 120px" @onclick=@(() => nav.Article(campaign))>
+                            @if (campaign.ProfileImage() != null) {
+                                <div class="article-preview-img" style="background-image: url(@campaign.ProfileImage().GetUrl())"></div>
+                            }
+                            <div class="w3-display-middle article-preview-label">
+                                @campaign.Name
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </TabPage>
+    <TabPage Title="Finished Campaigns">
+        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; overflow-x: auto;">
+            @if (world != null) {
+                foreach (var campaign in world.Articles.EnumerateCampaigns().Where(c => (c["Active"]?.AsBool() ?? false) != true)) {
+                    <div class="w3-padding" style="display: inline-block;">
+                        <div class="w3-border w3-round-large w3-display-container article-preview-container well" style="width: 120px; height: 120px" @onclick=@(() => nav.Article(campaign))>
+                            @if (campaign.ProfileImage() != null) {
+                                <div class="article-preview-img" style="background-image: url(@campaign.ProfileImage().GetUrl())"></div>
+                            }
+                            <div class="w3-display-middle article-preview-label">
+                                @campaign.Name
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </TabPage>
+</TabPanel>
+
+<TabPanel>
+    <TabPage Title="Create Article">
+        <GridList T=IArticleTemplate LargeLayout=Layout.TwelveColumns MediumLayout=Layout.SixColumns SmallLayout=Layout.TwoColumns Items=templates>
+            <div class="w3-padding">
+                <div class="w3-border w3-round-large w3-center well" @onclick=@(() => createArticleFromTemplate(context))>
+                    <img src="@context.TemplateIcon().GetUrl()" style="width:100%; height:auto;">
+                    @context.TemplateName()
+                </div>
+            </div>
+        </GridList>
+    </TabPage>
+    <TabPage Title="Search Articles">
+        <AdvancedSearch></AdvancedSearch>
+    </TabPage>
+</TabPanel>
+
+<Modal Title="New Article" OnClose=closeCreate Visible=showNewArticleModal>
+    <div class="w3-padding">
+        <label>Name</label>
+        <input @bind=createWithName>
+        <label>Content</label>
+        <textarea @bind=createWithDescription></textarea>
+
+        <div class="w3-padding w3-center">
+            <button class="w3-button @(canCreate() ? "ok" : "disable")" @onclick=addArticle>Create</button>
+        </div>
+    </div>
+</Modal>
+
+<Modal Title="New Campaign" OnClose=closeCampaign Visible=showNewCampaignPopup>
+    <div class="w3-padding">
+        <label>Name</label>
+        <input @bind=createWithName>
+        <label>Content</label>
+        <textarea @bind=createWithDescription></textarea>
+
+        <div class="w3-padding w3-center">
+            <button class="w3-button @(canCreate() ? "ok" : "disable")" @onclick=addCampaign>Create</button>
+        </div>
+    </div>
+</Modal>
+
+@code {
+    private static readonly List<IArticleTemplate> templates = Article.FindArticleTemplates().OrderBy(template => template.TemplateName()).ToList();
+    public static List<IArticleTemplate> LoadedTemplates => new List<IArticleTemplate>(templates);
+    
+    private World world;
+    protected override void OnInitialized() {
+        world = files.Data();   
+    }    
+
+    private bool showNewArticleModal = false;
+    private string _name;
+    private string createWithName {
+        get => _name;
+        set { _name = value; StateHasChanged(); }
+    }
+    private string createWithDescription;
+    private IArticleTemplate selectedTemplate;
+    private bool canCreate() => !string.IsNullOrEmpty(createWithName);
+
+    private void createArticleFromTemplate(IArticleTemplate template) {
+        this.selectedTemplate = template;
+        this.showNewArticleModal = true;
+        this.createWithName = null;
+        this.createWithDescription = null;
+    }
+    private void closeCreate() {
+        this.showNewArticleModal = false;
+        StateHasChanged();
+    }
+    private void addArticle() {
+        if (selectedTemplate == null) {
+            this.showNewArticleModal = false;
+            return;
+        }
+
+        if (!canCreate())
+            return;
+
+        if (world != null) {
+            Article article = selectedTemplate.Create(world.System);
+            article.Name = this.createWithName;
+            article.MarkdownContent = this.createWithDescription;
+
+            world.Articles.Add(article); // populates the Guid
+            createWithName = string.Empty;
+            createWithDescription = string.Empty;
+            nav.Article(article);
+            files.MarkDirty();
+        } else {
+            notify.Alert("You must create a world in order to create an article");
+        }
+    }
+
+    private bool showNewCampaignPopup = false;
+    public void tryAddCampaign() {
+        showNewCampaignPopup = true;
+        this.createWithName = null;
+        this.createWithDescription = null;
+    }
+    private void closeCampaign() {
+        showNewCampaignPopup = false;
+        StateHasChanged();
+    }
+    public void addCampaign() {
+        if (world != null) {
+            var article = new Article();
+            article.Campaign = new CampaignData();
+            article.Name = this.createWithName;
+            article.MarkdownContent = this.createWithDescription;
+
+            // Campaign Specific Settings ----------------------
+            article.CustomDetails = new List<Data.Custom.MetadataField>{
+                new Data.Custom.MetadataField {
+                    Name = "Active",
+                    Type = Data.Custom.FieldType.Boolean,
+                    Value = true.ToString()
+                },
+                new Data.Custom.MetadataField {
+                    Name = "Started On",
+                    Type = Data.Custom.FieldType.Date,
+                    Value = DateTime.Now.ToString()
+                },
+            };
+            // -------------------------------------------------
+
+            world.Articles.Add(article);
+            nav.Article(article);
+            files.MarkDirty();
+        } else {
+            notify.Alert("You must create a world in order to create a campaign");
+        }
+    }
+}

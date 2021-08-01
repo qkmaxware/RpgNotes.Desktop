@@ -1,0 +1,43 @@
+<div class="w3-padding">
+    <div style="white-space: nowrap; overflow-x: auto;">
+        @foreach (var tab in this.pages) {
+            <button class="w3-button @(tab == current ? ActiveTabCssClass : "disable")" @onclick=@(() => setCurrentPage(tab))>@tab.Title</button>
+        }
+        @if (BonusActions != null) {
+            <span>&nbsp;</span> @* Spacer between actions *@
+            foreach (var action in BonusActions) {
+                <button class="w3-button disable" @onclick=@(() => action?.Callback?.Invoke())>
+                    <img src="@action?.IconUrl" width=18>
+                </button>
+            }
+        }
+    </div>
+    <div class="@ActiveTabCssClass" style="padding-top: 16px;">
+        <CascadingValue Value=this>
+            @ChildContent
+        </CascadingValue>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string ActiveTabCssClass {get; set;} = "panel";
+    [Parameter] public RenderFragment ChildContent {get; set;}
+    [Parameter] public List<TabAction> BonusActions {get; set;}
+    private List<TabPage> pages = new List<TabPage>();
+    private TabPage current;
+
+    public void RegisterPage(TabPage page) {
+        this.pages.Add(page);
+        if (current == null)
+            setCurrentPage(page);
+        StateHasChanged();
+    }
+
+    public bool IsCurrentPage(TabPage page) {
+        return current == page;
+    }
+
+    private void setCurrentPage(TabPage page) {
+        this.current = page;
+    }
+}

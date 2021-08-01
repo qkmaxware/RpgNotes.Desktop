@@ -1,0 +1,124 @@
+@using RpgNotes.Desktop.Shared.Layouts
+@using System.IO
+@inject NavigationManager nav;
+@inject FileManager files;
+@inject Notifier notify;
+@page "/"
+
+<Navigator></Navigator>
+
+<div class="w3-display-container fill">
+    <div class="w3-display-middle">
+        <div class="w3-button w3-round-xlarge w3-center w3-padding w3-margin border solid" @onclick=Load>
+            <img src="static/images/upload.svg" width=64>
+            <hr>
+            Load
+        </div>
+        <div class="w3-button w3-round-xlarge w3-center w3-padding border solid" @onclick=New>
+            <img src="static/images/new.svg" width=64>
+            <hr>
+            New
+        </div>
+    </div>
+</div>
+
+<Modal Title="Load World" OnClose=closeLoad Visible=@showLoadModal>
+    <FileExplorer EditFilename=false Pattern="\.worldx$" OnFileSelected=loadSaveFile></FileExplorer>
+</Modal>
+
+<Modal Title="New World" OnClose=closeNew Visible=@showNewModal>
+    <div class="w3-padding">
+        <label>World Name</label>
+        <input @bind=createWithName>
+        <label>System</label>
+        <select @bind=createSelectedSystemAtIndex>
+            @for (var i = 0; i < systems.Count; i++) {
+                <option value=@i>@systems[i]</option>
+            }
+        </select>
+        @if (createSelectedSystem != null) {
+        <div class="w3-row w3-margin-bottom w3-margin-top">
+            <div class="w3-col" style="width: 48px;">
+                <img src=@createSelectedSystem.IconImage.GetUrl() width=48>
+            </div>
+            <div class="w3-rest w3-container">
+                <strong>@createSelectedSystem.Name</strong>
+                <p>
+                    @createSelectedSystem.Description
+                </p>
+                <div class="w3-round-large w3-padding well">
+                    @createSelectedSystem.Publication.Publisher (@(createSelectedSystem.Publication.YearOfPublication))
+                    <br><a target="_blank" href="@createSelectedSystem.Publication.Url">Official Website</a>
+                </div>
+            </div>
+        </div>
+        }
+        <div class="w3-padding w3-center">
+            <button class="w3-button @(canCreateWorld ? "ok" : "disable")" @onclick=createAndLoad>Create</button>
+        </div>
+    </div>
+</Modal>
+
+@code {
+    private static List<RpgSystem> systems = RpgSystem.FindRpgSystems();
+
+    protected override void OnInitialized() {
+        if (files.HasLoadedSavefile()) {
+            nav.Home();
+        }
+    }
+
+    private bool showLoadModal = false;
+    public void Load() {
+        showLoadModal = true;
+    }
+    public void closeLoad() {
+        showLoadModal = false;
+        StateHasChanged();
+    }
+    private void loadSaveFile(string path) {
+        if (path != null && File.Exists(path)) {
+            showLoadModal = false;
+            if (files.Load(path)) {
+                nav.Home();
+            } else {
+                // Error loading
+                notify.Alert($"Failed to load '{path}'");
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private bool showNewModal = false;
+    private int createSelectedSystemAtIndex;
+    private RpgSystem createSelectedSystem => createSelectedSystemAtIndex >= 0 && createSelectedSystemAtIndex < systems.Count ? systems[createSelectedSystemAtIndex] : null;
+    private string _name;
+    private string createWithName {
+        get => _name;
+        set {
+            _name = value;
+            StateHasChanged();
+        }
+    }
+    private bool canCreateWorld => createSelectedSystem != null && !string.IsNullOrEmpty(createWithName);
+    public void New() {
+        showNewModal = true;
+    }
+    public void closeNew() {
+        showNewModal = false;
+        StateHasChanged();
+    }
+    private void createAndLoad() {
+        if (canCreateWorld) {
+            showNewModal = false;
+            var world = new World {
+                Name = createWithName,
+                CreatedAt = DateTime.Now,
+                System = createSelectedSystem,
+                Articles = new ArticleCollection(),
+            };
+            files.Load(world);
+            nav.Home();
+        }
+    }
+}

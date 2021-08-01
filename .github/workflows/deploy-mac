@@ -1,0 +1,45 @@
+name: Deploy-Mac
+on:
+  release: 
+    types:
+    - released
+    branches: 
+    - "root"
+jobs:
+  deploy:
+    name: Deploy MacOs Binary
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@master
+        with:
+          submodules: "recursive"
+          fetch-depth: 0
+
+      - name: Setup NPM 
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Setup Dotnet
+        uses: actions/setup-dotnet@v1 
+        with:
+          dotnet-version: '5.0.x' # SDK Version to use
+
+      - name: Install Electron Tooling
+        run: dotnet tool install ElectronNET.CLI -g
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build x64 Binary
+        run: electronize build /target osx
+      - name: Rename x64 Binary
+        run mv "bin/Desktop/RpgNotes.Desktop" "bin/Desktop/RpgNotes.Mac.x64"
+
+      - name: Push x64 Binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          file: bin/Desktop/RpgNotes.Mac.x64

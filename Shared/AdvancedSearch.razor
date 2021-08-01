@@ -1,0 +1,135 @@
+@using RpgNotes.Desktop.Pages
+@using RpgNotes.Desktop.Shared.Renderers
+@inject NavigationManager nav
+@inject FileManager files
+
+<div class="w3-container w3-margin-bottom">
+    <div class="w3-container well">
+        <p>
+            <strong>Find pages with...</strong>
+        </p>
+        <div class="w3-container">
+            <label>Names like:</label>
+            <input type="text" placeholder="name" @bind=nameFilter>
+            <label>Content containing:</label>
+            <input type="text" placeholder="text" @bind=descFilter>
+        </div>
+        <p>
+            <strong>Then narrow results by...</strong>
+        </p>
+        <div class="w3-container">
+            <label>Label:</label>
+            <div class="w3-container" style="min-height:20px;">
+                @if (this.allTags != null) {
+                    foreach (var tag in this.allTags) {
+                        <TagRenderer Tag=@tag Selectable=true OnSelect=addTag OnDeselect=removeTag></TagRenderer>
+                    }
+                }
+            </div>
+        </div>
+        <div class="w3-center w3-padding">
+            <button class="w3-button @(searching ? "disable" : "ok")" @onclick=startSearch>Search</button>
+        </div>
+    </div>
+</div>
+
+<div class="w3-container">
+    @if (searching) {
+        <div class="w3-center">
+            Searching... please wait
+        </div>
+    } else if (results != null) {
+        <ul class="w3-ul w3-hoverable">
+            @foreach (var article in results) {
+                <li class="w3-bar" @onclick=@(() => nav.Article(article))>
+                @if (article.ProfileImage() != null) {
+                    <img src="@article.ProfileImage().GetUrl()" class="w3-bar-item w3-round-xlarge w3-hide-small" style="width:85px">
+                }
+                <div class="w3-bar-item">
+                    <span class="w3-large">@article.Name</span><br>
+                    @if (article.HasMap()) {
+                        <span class="w3-hover-opacity" style="cursor: pointer;" @onclick=@(() => nav.Map(article)) @onclick:stopPropagation="true">Map</span>
+                    }
+                </div>
+                </li>
+        }
+        </ul>
+    }
+</div>
+
+@code {
+    private string nameFilter;
+    private string descFilter;
+    private List<string> tagFilters;
+    private List<string> allTags;
+    private World world;
+
+    protected override void OnInitialized() {
+        this.world = files.Data();
+        this.tagFilters = new List<string>();
+        if (world != null) {
+            this.allTags = this.world.Articles.GetAllTags().ToList(); 
+        }
+    }
+
+    private void addTag(string tag) {
+        this.tagFilters.Add(tag);
+    }
+    private void removeTag(string tag) {
+        this.tagFilters.Remove(tag);
+    }
+
+    private bool searching;
+    private List<Article> results;
+    private void startSearch() {
+        if (!searching) { // Don't interupt a search in progress
+            searching = true;
+            StateHasChanged();
+            Task.Run(doSearch);
+        }
+    }
+    private void doSearch() {
+        results = getResultEntries().OrderBy(a => a.Name).ToList();
+        searching = false;
+        InvokeAsync(StateHasChanged);
+    }
+    private IEnumerable<Article> getResultEntries() {
+        var name = this.nameFilter;
+        var desc = this.descFilter;
+        var tags = new List<string>(this.tagFilters);
+
+        if (world == null)
+            yield break;
+
+        foreach (var entry in world.Articles.EnumerateArticles()) {
+            if (
+                isVisible(entry)
+                && nameMatches(name, entry) 
+                && descMatches(desc, entry) 
+                //&& typeMatches(this.typeFilters, entry)
+                && tagMatches(tags, entry)
+            ) {
+                yield return entry;
+            }
+        }
+    }
+
+    #region Filters
+    private bool isVisible (Article entry) {
+        return entry.Visibility == Visibility.Public;
+    }
+    private bool nameMatches(string filter, Article entry) {
+        return string.IsNullOrEmpty(filter) || entry.Name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool descMatches(string filter, Article entry) {
+        return string.IsNullOrEmpty(filter) || (entry.MarkdownContent != null && entry.MarkdownContent.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
+    private bool tagMatches(List<string> tags, Article entry) {
+        return 
+            (tags == null || tags.Count == 0)    // No tags
+            || (entry.Tags != null && entry.Tags.Where(tag => tags.Contains(tag)).Any());
+    }
+    #endregion
+}

@@ -1,0 +1,231 @@
+@page "/article/{guid}/map"
+@page "/article/{guid}/map/relocate/{connToRelocate}"
+@page "/article/{guid}/map/{x:int}/{y:int}"
+@using RpgNotes.Desktop.Shared.Layouts
+@inject IJSRuntime js;
+@inject FileManager files;
+@inject NavigationManager nav;
+
+<Navigator></Navigator>
+
+@if (article == null) {
+<div class="w3-center w3-padding">No article with id @guid</div>
+} else if (!article.HasMap()) {
+<div class="w3-center w3-padding">No map associated with article "@(article.Name)"</div>
+} else {
+<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1">
+<div class="w3-display-container" style="position: relative; overflow: hidden; width: 100vw; height: 100vh;"> 
+    @* Map Layers *@
+    <div @ref=map style="position: absolute;" @onclick=onClickMap>
+        <img draggable="false" src="@article.Map.Background.GetUrl()">
+        @if (article.Map.Grid != null) {
+        <div class="grid" style="margin: @(article.Map.Grid.OffsetY)px 0 0 @(article.Map.Grid.OffsetY); background-size: @(article.Map.Grid.CellWidth)px @(article.Map.Grid.CellHeight)px"></div>
+        }
+        @if (markedConnections != null) {
+            foreach (var conn in markedConnections) {
+                if (conn.MapPosition != null) {
+                    <img draggable="false" @onclick=@(() => onClickMarker(conn)) src="@conn.MapPosition.Marker" style="height: @(MarkerSizePx)px; width: auto; position: absolute; top: @(conn.MapPosition.Y - MarkerSizePx)px; left:@(conn.MapPosition.X - MarkerSizePx/2)px;">
+                }
+            }
+        }
+    </div>
+    @* UI Elements *@
+    <div class="w3-display-topleft w3-padding" style="margin-top: @(topMarginPx)px;">
+        <div class="w3-bar-block">
+            <button class="w3-button w3-bar-item bright" @onclick=zoomIn>+</button>
+            <button class="w3-button w3-bar-item bright" @onclick=zoomOut>-</button>
+            <button class="w3-button w3-bar-item bright" @onclick=reset>&#8635;</button>
+        </div>
+    </div>
+    <div class="w3-display-topright w3-padding" style="margin-top: @(topMarginPx)px;">
+        <button class="w3-button w3-round error" @onclick=gotoArticle>&#8249; Go to @article.Name</button>
+    </div>
+    <div class="w3-display-topmiddle" style="margin-top: @(topMarginPx)px;">
+        @if(Relocate != null) {
+            <div class="w3-padding w3-large error">
+                Place Marker for "@(relocateArticle?.Name)"
+            </div>
+        }
+    </div>
+</div>
+</div>
+}
+
+<Sidebar Title=@(selectedArticle?.Name) Visible=showMarkerDetailsPopup OnClose=@(() => { showMarkerDetailsPopup=false; StateHasChanged(); })>
+    @if(selectedConnection != null && selectedArticle != null) {
+        <div class="w3-padding w3-center">
+            <button class="w3-button w3-round-large error" @onclick=@(() => nav.Article(selectedArticle))>&#8249; Go to @selectedArticle.Name</button>
+        </div>
+        <div class="w3-border-bottom w3-margin-bottom w3-large">
+            Coordinates
+        </div>
+        <div class="w3-padding">
+            <div class="w3-margin-bottom">
+                <label>X</label>
+                <input type="number" @bind=selectedConnection.MapPosition.X placeholder="X Coordinate" class="w3-input darker">
+                <label>Y</label>
+                <input type="number" @bind=selectedConnection.MapPosition.Y placeholder="Y Coordinate" class="w3-input darker">
+            </div>
+            <div class="w3-right-align">
+                <button class="w3-button ok" @onclick=relocate>
+                    <img src="static/images/markers/gps_white.svg" width=20 height=20> Select Position
+                </button>
+            </div>
+        </div>
+        <div class="w3-border-bottom w3-margin-bottom w3-large">
+            Symbology
+        </div>
+        <div>
+            @if (selectedConnection.MapPosition != null) {
+                @foreach (var type in MarkerTypes) {
+                    <div style="padding: 8px; display: inline-block;" class="@(type == selectedConnection.MapPosition.Marker ? "error" : string.Empty)" @onclick=@(() => selectedConnection.MapPosition.Marker = type)>
+                        <img src="@type" width=32 height=32>
+                    </div>
+                }
+            }
+        </div>
+    }
+</Sidebar>
+
+@code {
+    [Parameter] public string guid {get; set;}
+    [Parameter] public int? x {get; set;}
+    [Parameter] public int? y {get; set;}
+    [Parameter] public string connToRelocate {get; set;}
+
+    private static int MarkerSizePx = 32;
+    private static int topMarginPx = 46;
+    private Connection Relocate; // Connection to relocate
+    private Article relocateArticle;
+
+    private World world;
+    private Article article;
+    private List<Connection> markedConnections;
+    private ElementReference map;
+
+    protected override void OnInitialized() {
+        world = files.Data();
+        if (world == null || world.Articles == null)
+            return;
+            
+        article = world.Articles[guid];
+        if (article == null)
+            return;
+        
+        var connections = world.Articles.GetConnectionsForArticle(article);
+        var connectionsToMark = connections.Where(conn => conn.GetParticipantGuid(conn.MapOwner) == guid);
+        this.markedConnections = connectionsToMark.ToList();
+
+        if (connToRelocate != null) {
+            relocate(this.markedConnections.Where(conn => conn.GetParticipantGuid(conn.MapOwner.OtherParticipant()) == connToRelocate).FirstOrDefault());
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if (firstRender && article != null && article.HasMap()) {
+            try {
+                await js.InvokeVoidAsync("RpgNotes.Map.Setup", this.map);
+                if (x.HasValue && y.HasValue) {
+                    // Pan to that location
+                    await js.InvokeVoidAsync("RpgNotes.Map.Center", x.Value, y.Value);
+                }   
+            } catch {}    
+        }
+    }
+
+    private async void zoomIn() {
+        await js.InvokeVoidAsync("RpgNotes.Map.ZoomIn");
+    }
+    private async void zoomOut() {
+        await js.InvokeVoidAsync("RpgNotes.Map.ZoomOut");
+    }
+    private async void reset() {
+        await js.InvokeVoidAsync("RpgNotes.Map.SetZoom", 1);
+        await js.InvokeVoidAsync("RpgNotes.Map.PanTo", 0, 0);
+    }
+    private class point {
+        public int x {get; set;}
+        public int y {get; set;}
+    }
+    private async void onClickMap(MouseEventArgs e) {
+        if (Relocate != null) {
+            var p = Relocate.MapPosition;
+            var location = await js.InvokeAsync<point>("RpgNotes.Map.MousePosition", e.ClientX, e.ClientY);
+
+            p.X = location.x;
+            p.Y = location.y;
+            Relocate = null;
+            relocateArticle = null;
+
+            // We are done relocating this connection
+            StateHasChanged();
+        }
+    }
+
+    private bool showMarkerDetailsPopup = false;
+    private Connection selectedConnection;
+    private Article selectedArticle;
+    private void onClickMarker(Connection conn) {
+        var otherGuid = conn.GetParticipantGuid(conn.MapOwner.OtherParticipant());
+        if (world != null && world.Articles != null) {
+            selectedArticle = world.Articles[otherGuid];
+            if (selectedArticle != null) {
+                selectedConnection = conn;
+                showMarkerDetailsPopup = true;
+            }
+        }
+    }
+    private void gotoArticle() {
+        if (article != null) {
+            nav.Article(article);
+        }
+    }
+
+
+    private string[] MarkerTypes = new string[] {
+        "static/images/markers/gps.svg",
+        "static/images/markers/gps_white.svg",
+        
+        "static/images/markers/circle.svg",
+        "static/images/markers/major_circle.svg",
+        "static/images/markers/capital_circle.svg",
+        "static/images/markers/triangle.svg",
+        "static/images/markers/square.svg",
+
+        "static/images/markers/campsite.svg",
+        "static/images/markers/castle.svg",
+        "static/images/markers/church.svg",
+        "static/images/markers/hospital.svg",
+        "static/images/markers/forge.svg",
+        "static/images/markers/sword.svg",
+        "static/images/markers/gem.svg",
+        "static/images/markers/pub.svg",
+        "static/images/markers/food.svg",
+        "static/images/markers/dice.svg",
+
+        "static/images/markers/fishing.svg",
+        "static/images/markers/forestry.svg",
+        "static/images/markers/mountain.svg",
+        "static/images/markers/cave.svg",
+        "static/images/markers/ranch.svg",
+        "static/images/markers/garden.svg",
+        "static/images/markers/xswords.svg",
+
+        "static/images/markers/coin.svg",
+        "static/images/markers/danger.svg",
+        "static/images/markers/goal.svg",
+        "static/images/markers/info.svg",
+    };
+
+    private void relocate() {
+        relocate(this.selectedConnection);
+    }
+    private void relocate(Connection conn) {
+        if (conn == null)
+            return;
+        this.Relocate = conn;
+        this.relocateArticle = world.Articles[this.Relocate.GetParticipantGuid(this.Relocate.MapOwner.OtherParticipant())];
+        this.showMarkerDetailsPopup = false;
+    }
+
+}

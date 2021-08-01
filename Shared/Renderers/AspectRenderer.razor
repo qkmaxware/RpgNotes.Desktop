@@ -1,0 +1,26 @@
+<div class="disable-border">
+    <div class="w3-center main">
+        @Aspect.Name
+    </div>
+    <div style="width: 100%;">
+        @if (Aspect.Type == AspectType.String) {
+            <input type="text" @bind=Aspect.Value class="w3-center border base-border solid">
+        } 
+        else if (Aspect.Type == AspectType.MultilineString) {
+            <textarea type="text" @bind=Aspect.Value class="border base-border solid"></textarea>
+        }
+        else if (Aspect.Type == AspectType.Number) {
+            <input type="number" @bind=Aspect.Value class="w3-center border base-border solid">
+        }  
+        else if (Aspect.Type == AspectType.Boolean) {
+            <div class="w3-row">
+                <div class="w3-button w3-col s6 @(Aspect.AsBool() == true ? "ok" : string.Empty)" @onclick=@(() => Aspect.Value = "true")>&checkmark;</div>
+                <div class="w3-button w3-col s6 @(Aspect.AsBool() ==false ? "error" : string.Empty)" @onclick=@(() => Aspect.Value = "false")>&times;</div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Aspect Aspect {get; set;}
+}

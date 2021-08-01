@@ -1,0 +1,19 @@
+@typeparam T
+
+<div class="w3-row">
+    @if(this.Items != null) {
+        foreach (var item in Items) {
+        <div class="w3-col s@((int)SmallLayout) m@((int)MediumLayout) l@((int)LargeLayout)">
+            @ChildContent(item)
+        </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Layout LargeLayout {get; set;}
+    [Parameter] public Layout MediumLayout {get; set;} = Layout.FullWidth;
+    [Parameter] public Layout SmallLayout {get; set;} = Layout.FullWidth;
+    [Parameter] public RenderFragment<T> ChildContent {get; set;}
+    [Parameter] public List<T> Items {get; set;}
+}

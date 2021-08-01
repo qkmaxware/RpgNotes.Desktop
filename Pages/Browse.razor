@@ -1,0 +1,104 @@
+@page "/browse"
+@using RpgNotes.Desktop.Shared.Layouts
+@inject FileManager files;
+@inject NavigationManager nav;
+
+<Navigator></Navigator>
+
+@if (world != null) {
+    <div class="w3-row">
+        <div class="w3-col l3 m6">
+            <div class="w3-padding">
+                <div class="panel">
+                    <Section Title="Explore">
+                        <Content>
+                            <div class="w3-bar-block">
+                                <button class="w3-button w3-bar-item" @onclick=clearFilter>Articles</button>
+                                <button class="w3-button w3-bar-item" @onclick=filterMapsOnly>Maps</button>
+                                <button class="w3-button w3-bar-item" @onclick=exploreRandom>Random Article</button>
+                            </div>
+                        </Content>
+                    </Section>
+                    <Section Title="Recent">
+                        <Content>
+                            <div class="w3-bar-block">
+                                @if (this.recent != null) {
+                                    foreach (var article in recent) {
+                                        <button class="w3-button w3-bar-item" @onclick=@(() => nav.Article(article))>@article.Name</button>
+                                    }
+                                }
+                            </div>
+                        </Content>
+                    </Section>
+                </div>
+            </div>
+        </div>
+        <div class="w3-col l9 m6">
+            <TabPanel>
+                <TabPage Title="Explore">
+                    <GridList T=Article Items=filteredArticles LargeLayout=Layout.SixColumns MediumLayout=Layout.ThreeColumns SmallLayout=Layout.FullWidth>
+                        <div class="w3-padding">
+                            <div class="w3-border w3-round-large w3-display-container article-preview-container well" @onclick=@(() => nav.Article(context))>
+                                @if (context.ProfileImage() != null) {
+                                    <div class="article-preview-img" style="background-image: url(@context.ProfileImage().GetUrl())"></div>
+                                }
+                                <div class="w3-display-middle article-preview-label">
+                                    @context.Name
+                                </div>
+                            </div>
+                        </div>
+                    </GridList>
+                </TabPage>
+                <TabPage Title="Search">
+                    <AdvancedSearch></AdvancedSearch>
+                </TabPage>
+            </TabPanel>
+        </div>
+    </div>
+}
+
+@code {
+    static Random rng = new Random();
+    private World world;
+    private List<Article> articles;
+    private List<Article> filteredArticles;
+    private List<Article> recent;
+    protected override void OnInitialized() {
+        this.world = files.Data();
+        if (this.world != null) {
+            this.articles = this.world.Articles.EnumerateArticles().Where(article => article.Visibility == Visibility.Public).ToList();
+            this.recent = this.articles.OrderByDescending(article => article.CreatedAt).Take(10).ToList();
+            clearFilter();
+        }
+    }
+
+    private void clearFilter() {
+        setFilter(null);
+    }
+
+    private void filterMapsOnly() {
+        setFilter((article) => article.HasMap());
+    }
+    private void filterByTag(string tag) {
+        setFilter((article) => article.Tags != null && article.Tags.Contains(tag));
+    }
+
+    private void setFilter(Func<Article, bool> filter) {
+        if (filter == null) {
+            this.filteredArticles = articles;
+        } else {
+            if (this.articles != null) {
+                this.filteredArticles = this.articles.Where(filter).ToList();
+            }
+        }
+    }
+
+    private void exploreRandom() {
+        if (this.world != null && this.articles != null) {
+            if (articles.Count > 0) {
+                var index = rng.Next(articles.Count);
+                nav.Article(articles[index]);
+            }
+        }
+    }
+}

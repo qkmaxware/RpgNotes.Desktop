@@ -1,0 +1,41 @@
+{
+  "executable": "RpgNotes.Desktop",
+  "splashscreen": {
+    "imageFile": ""
+  },
+  "name": "RpgNotes.Desktop",
+  "author": "",
+  "singleInstance": false,
+  "environment": "Production",
+  "build": {
+    "appId": "com.RpgNotes.Desktop.app",
+    "productName": "RpgNotes.Desktop",
+    "copyright": "Copyright © 2020",
+    "buildVersion": "1.0.0",
+    "compression": "maximum",
+    "win": { 
+      "target": ["portable"] 
+    },
+    "linux": {
+      "target": ["AppImage"]
+    },
+    "directories": {
+      "output": "../../../bin/Desktop"
+    },
+    "extraResources": [
+      {
+        "from": "./bin",
+        "to": "bin",
+        "filter": [ "**/*" ]
+      }
+    ],
+    "files": [
+      {
+        "from": "./ElectronHostHook/node_modules",
+        "to": "ElectronHostHook/node_modules",
+        "filter": [ "**/*" ]
+      },
+      "**/*"
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+@using System.Globalization
+@using RpgNotes.Desktop.Data.Custom
+@inject FileManager files;
+
+<div class="field">
+<label>@Label</label>
+<div class="w3-row">
+    @if (AllowEdit) {
+    <div class="w3-col edit" style="width:24px">
+        <img src="static/images/edit.svg" style="width:24px; padding-top:8px;" @onclick=@(() => isDisabled = !isDisabled)>
+    </div>
+    }
+    <div class="w3-rest">
+        <div class="w3-row">
+            <div class="w3-col w3-right" style="width: 64px">
+                <input type="text" @bind=@unit disabled="@isDisabled" style="padding-left: 0px;">
+            </div>
+            <div class="w3-rest">
+                <input type="number" @bind=@amount class="w3-right-align" disabled="@isDisabled">
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+@code {
+    [Parameter] public string Label {get; set;}
+    [Parameter] public bool AllowEdit {get; set;} = false;
+    [Parameter] public Func<string> Getter {get; set;}
+    [Parameter] public Action<string> Setter {get; set;}
+
+    private bool isDisabled = true;
+    private string text {
+        get => Getter?.Invoke();
+        set {
+            Setter?.Invoke(value);
+            files.MarkDirty();
+            StateHasChanged();
+        }
+    }
+
+    private char unitSeparator => MetadataField.QuantityUnitSeparator;
+    private float amount {
+        get {
+            var parts = text.Split(unitSeparator, 2);
+            float b;
+            if (float.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out b)) {
+                return b;
+            } else {
+                return default(float);
+            }
+        } 
+        set {
+            text = value.ToString() + unitSeparator + unit;
+        }
+    }
+
+    private string unit {
+        get {
+            var parts = text.Split(unitSeparator, 2);
+            if (parts.Length > 1)
+                return parts[1];
+            else 
+                return string.Empty;
+        }
+        set {
+            text = amount.ToString() + unitSeparator + value; 
+        }
+    }
+
+}

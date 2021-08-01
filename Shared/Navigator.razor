@@ -1,0 +1,113 @@
+@using RpgNotes.Desktop.Pages
+@using RpgNotes.Desktop.Shared.Layouts
+@using Microsoft.AspNetCore.Http
+@inject FileManager files
+@inject NavigationManager nav
+@inject IJSRuntime js
+@inject Notifier notify;
+@inject IHttpContextAccessor getContext;
+
+
+<div class="w3-bar well">
+    <span class="w3-button w3-bar-item" @onclick=home>
+       <img src="static/images/icons/quests.logo.svg" width=20> 
+       @if (files.HasLoadedSavefile()) {
+           <span>@(files.Data().Name??"Create") </span>
+       } else {
+           <span>RpgNotes</span>
+       }
+    </span>
+    @if (files.HasLoadedSavefile()) {
+    <span class="w3-button w3-bar-item" @onclick=browse>
+       Browse
+    </span>
+    }
+    <div class="w3-right-align">
+        @ChildContent
+        @if (files.HasLoadedSavefile()) {
+            <div class="@(files.RequiresSaving() ? " error" : string.Empty)" style="display: inline-block">
+                <button class="w3-button" @onclick=save>
+                    Save
+                    @if (files.RequiresSaving()) {
+                        <span>!</span>
+                    }
+                </button>
+                <div class="w3-dropdown-click" style="float: none;">
+                    <button class="w3-button" style="padding-left:2px; padding-right:2px;" @onclick=@(() => showSaveDropdown = !showSaveDropdown)>&#x25BE;</button>
+                    <div class="w3-dropdown-content w3-bar-block w3-card-4 well @dropdownCss" style="right:0;">
+                        <button class="w3-button w3-bar-item well" @onclick=saveAsStart>Save As</button>
+                        <button class="w3-button w3-bar-item well" @onclick=saveAndClose>Save and Close</button>
+                        <button class="w3-button w3-bar-item well" @onclick=closeWithoutSaving>Close Without Saving</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<Modal Title="Save As" Visible=showSaveAsPopup OnClose=@(() => { showSaveAsPopup = false; StateHasChanged(); })>
+    <FileExplorer EditFilename=true Pattern="\.worldx$" OnFileSelected=saveAsDone></FileExplorer>
+</Modal>
+
+@code {
+    [Parameter] public RenderFragment ChildContent {get; set;}
+
+    private void home() {
+        if (files.HasLoadedSavefile())
+            nav.Home();
+        else {
+            nav.Index();
+        }
+    }
+
+    private void browse() {
+        if (files.HasLoadedSavefile())
+            nav.Browse();
+    }
+
+    private bool showSaveDropdown = false;
+    private string dropdownCss => showSaveDropdown ? "w3-show" : "w3-hide";
+
+    private void save() {
+        if (files.SavePath == null) {
+            saveAsStart();
+        } else {
+            files.Save(files.SavePath);
+        }
+    }
+
+    private bool showSaveAsPopup = false;
+    private void saveAsStart() {
+        showSaveAsPopup = true;
+        showSaveDropdown = false;
+    }
+
+    private bool closeAfterSaving = false;
+    private void saveAsDone(string path) {
+        if (!path.EndsWith(".worldx"))
+            path += ".worldx";
+
+        showSaveAsPopup = false;
+        files.Save(path);
+
+        if (closeAfterSaving) {
+            closeWithoutSaving();
+        }
+        closeAfterSaving = false;
+        StateHasChanged();
+    }
+
+    private void saveAndClose() {
+        if (files.SavePath == null) {
+            saveAsStart();
+            closeAfterSaving = true;
+        } else {
+            files.Save(files.SavePath);
+            closeWithoutSaving();
+        }
+    }
+    private void closeWithoutSaving() {
+        this.files.Clear();
+        nav.Index();
+    }
+}

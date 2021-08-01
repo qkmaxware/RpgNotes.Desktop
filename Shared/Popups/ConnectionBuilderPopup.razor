@@ -1,0 +1,193 @@
+@using RpgNotes.Desktop.Shared.Layouts
+@inject FileManager files
+@inject Notifier notify;
+
+<Modal Title="New Connection" Visible=popupVisible OnClose=@(() => { popupVisible=false; StateHasChanged(); })>
+    <div class="w3-padding">
+        <div>
+            <label>Relationship:</label>
+            <TabPanel ActiveTabCssClass="header">
+                @foreach (var group in organizedGenerators) {
+                    if (group.Key == OtherConnectionsGroup)
+                        continue;
+                    <TabPage Title=@group.Key>
+                        <div class="w3-padding">
+                            @foreach (var name in group.Value) {
+                                var key = group.Key + "." + name.Key;
+                                <button class="w3-button w3-round @(generatorKey == key?"error":"header")" @onclick=@(() => setGeneratorKey(key))>@name.Key</button>
+                            }
+                        </div>
+                    </TabPage>
+                }
+                <TabPage Title=@OtherConnectionsGroup>
+                    <div class="w3-padding">
+                        <div class="w3-center">
+                            <button class="w3-button w3-round @(generatorKey == (CustomId)?"error":"header")" @onclick=@(() => setGeneratorKey(CustomId))>Create Custom Relationship</button>
+                        </div>
+                        @if (generatorKey == (CustomId)) {
+                        <div class="w3-padding w3-leftbar">
+                            <label>Connection to</label>
+                            <input type="text" placeholder="@(myEntryName)'s relationship to @(withEntryName)" @bind=forward>
+                            <label>Connection from</label>
+                            <input type="text" placeholder="@(withEntryName)'s relationship to @(myEntryName)" @bind=reverse>
+                        </div>
+                        }
+                    </div>
+                </TabPage>
+            </TabPanel>
+        </div>
+        <div>
+            <label>@ForwardRelationName:</label>
+            <input list="all-entries-list" type="text" @bind=withEntryName>
+            <datalist id="all-entries-list">
+                @if (articles != null) {
+                    foreach (var entry in articles) {
+                        <option value=@entry.Name/>
+                    }
+                }
+            </datalist>
+        </div>
+        <div class="w3-padding w3-center">
+            <button class="w3-button ok" @onclick=addFromOrganized>Add</button>
+        </div>
+    </div>
+</Modal>
+
+@code {
+    [Parameter] public Action<Connection> OnAdd {get; set;}
+
+    private bool popupVisible;
+    private string generatorKey;
+    private string myEntryName;
+    private string myEntryGuid;
+    private string withEntryName;
+    private List<Article> articles;
+
+    private static readonly string OtherConnectionsGroup = "Custom";
+    private static readonly string CustomConnectionKey = "Custom";
+    public static string CustomId => OtherConnectionsGroup + "." + CustomConnectionKey;
+    private Dictionary<string, Dictionary<string, Func<string,string,Connection>>> organizedGenerators;
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        organizedGenerators = new Dictionary<string, Dictionary<string, Func<string, string, Connection>>>();
+
+        var world = this.files.Data();
+        if (world != null) {
+            this.articles = world.Articles.EnumerateArticles().ToList();
+        }
+
+        var campaigns = new Dictionary<string, Func<string, string, Connection>>();
+        organizedGenerators["Campaign"] = campaigns;
+        campaigns["Is player in"] = (player, campaign) => conn(campaign, "Played By", player, "Is player in");
+        campaigns["Major villain in"] = (character, campaign) => conn(campaign, "Major villain is", character, "Major villain in");
+        campaigns["Minor villain in"] = (character, campaign) => conn(campaign, "Minor villain is", character, "Minor villain in");
+
+        var ancestry = new Dictionary<string, Func<string, string, Connection>>();
+        organizedGenerators["Familial"] = ancestry;
+        ancestry["Parent of"]   = (parent, child) => conn(parent, "Parent of", child, "Child of", conn => conn.FamilialParent = Participant.From);
+        ancestry["Child of"]    = (child, parent) => conn(parent, "Parent of", child, "Child of", conn => conn.FamilialParent = Participant.From);
+        ancestry["Spouse of"]  = (a, b) => conn(a, "Spouse of", b, "Spouse of");
+        //ancestry["Sibling of"]  = (a, b) => conn(a, "Sibling of", b, "Sibling of");
+        generatorKey = "Familial.Parent of";
+
+        var personal = new Dictionary<string, Func<string, string, Connection>>(); 
+        organizedGenerators["Personal"] = personal;
+        personal["Friends with"]= (a, b) => conn(a, "Friends with", b, "Friends with");
+        personal["Rivals with"] = (a, b) => conn(a, "Rivals with", b, "Rival of");
+        personal["Dislikes"]    = (a, b) => conn(a, "Dislikes", b, "Disliked by");
+        personal["Studied with"]= (a, b) => conn(a, "Studied with", b, "Studied with");
+        personal["Taught"]      = (teacher, student) => conn(teacher, "Taught", student, "Learned from");
+        personal["Learned from"]= (student, teacher) => conn(teacher, "Taught", student, "Learned from");;
+
+        var owners = new Dictionary<string, Func<string, string, Connection>>(); 
+        organizedGenerators["Possession"] = owners;
+        owners["Owner of"] = (owner, item) => conn(owner, "Owner of", item, "Owned by");
+        owners["Owned by"] = (item, owner) => conn(owner, "Owner of", item, "Owned by");
+        owners["Leader of"] = (leader, group) => conn(leader, "Leader of", group, "Lead by");
+        owners["Lead by"] = (group, leader) => conn(leader, "Leader of", group, "Lead by");
+        owners["Contains"] = (bag, item) => conn(bag, "Contains", item, "Contained in");
+        owners["Contained in"] = (item, bag) => conn(bag, "Contains", item, "Contained in");
+
+        var location = new Dictionary<string, Func<string, string, Connection>>();
+        organizedGenerators["Location"] = location;
+        location["Located in"] = (city, country) => conn(city, "Located in", country, "Contains", (conn) => conn.MapOwner = Participant.To); //country is the map owner
+        location["Contains"] = (country, city) => conn(city, "Located in", country, "Contains", (conn) => conn.MapOwner = Participant.To);   //country is the map owner
+
+        var other = new Dictionary<string, Func<string, string, Connection>>();
+        organizedGenerators[OtherConnectionsGroup] = other;
+        other[CustomConnectionKey] = CustomConnectionBuilder;
+    }
+
+    public void Open(Article article) {
+        this.popupVisible = true;
+        this.myEntryGuid = article.Guid;
+        this.myEntryName = article.Name;
+        StateHasChanged();
+    }
+
+    private void setGeneratorKey(string key) {
+        this.generatorKey = key;
+        this.forward = null;
+        this.reverse = null;
+    }
+    private string ForwardRelationName => this.generatorKey == null ? "With" : (
+        this.generatorKey == CustomId 
+        ? ( string.IsNullOrEmpty(forward) ? "With" : forward ) 
+        : ( this.generatorKey.Split('.', 2)[1] )
+    );
+
+    private void addFromOrganized() {
+        if (this.articles == null) {
+            return;
+        }
+        if (generatorKey == null) {
+            notify.Alert("Please select a relationship type");
+            return;
+        }
+        var kv = generatorKey.Split('.', 2);
+        if (kv.Length < 2)
+            return;
+
+        var groupName = kv[0];
+        var funcName = kv[1]; 
+        if (organizedGenerators.ContainsKey(groupName)) {
+            var group = organizedGenerators[groupName];
+            if (group.ContainsKey(funcName)) {
+                var generatorFunction = group[funcName];
+                if (generatorFunction != null) {
+                    var ent = articles.Where(e => e.Name == withEntryName).FirstOrDefault();
+                    if (ent != null) {
+                        var conn = generatorFunction(myEntryGuid, ent.Guid);
+                        OnAdd?.Invoke(conn);
+                        popupVisible = false;
+                    } else {
+                        notify.Alert($"Invalid article name '{withEntryName}'");
+                    }
+                }
+            }
+        }
+    }
+
+    private Connection conn(string from, string forward, string to, string reverse, Action<Connection> polish = null) {
+        var conn = new Connection {
+            GuidFrom = from,
+            GuidTo = to,
+            FromToRelation = forward,
+            ToFromRelation = reverse,
+        };
+
+        polish?.Invoke(conn);
+
+        return conn;
+    }
+
+    private string forward;
+    private string reverse;
+    private Connection CustomConnectionBuilder (string fromGuid, string toGuid) {
+        return new Connection {
+            GuidFrom = fromGuid, GuidTo = toGuid,
+            FromToRelation = forward,
+            ToFromRelation = reverse,
+        }; 
+    }
+}

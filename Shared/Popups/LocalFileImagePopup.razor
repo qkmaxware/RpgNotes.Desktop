@@ -1,0 +1,57 @@
+@using ElectronNET.API
+@using RpgNotes.Desktop.Shared.Layouts
+@using System.IO
+
+<Modal Title="Add Image" Visible=popupVisible OnClose=@(() => { popupVisible=false; StateHasChanged(); })>
+    @*@if (HybridSupport.IsElectronActive){
+    <FileUploader Id="attachArticleImage" Accept="image/*" OnFileChanged=setPath></FileUploader>
+    } else {*@
+    <FileExplorer EditFilename=false SubmitOnSelect=true Pattern="\.png$|\.jpg$|\.jpeg$|\.tif$|\.tiff$|\.svg$|\.gif$" OnFileSelected=setPath></FileExplorer>
+    <div class="w3-padding w3-center">
+        <button class="w3-button @(canAdd ? "ok" : "disable")" @onclick=link>
+            <img src="static/images/link.svg" width=20> Link
+        </button>
+        <button class="w3-button @(canAdd ? "ok" : "disable")" @onclick=embed>
+            <img src="static/images/embed.svg" width=20> Embed
+        </button>
+    </div>
+</Modal>
+
+@code {
+    private bool popupVisible = false;
+    private bool canAdd => !string.IsNullOrEmpty(imagePath) && File.Exists(imagePath);
+
+    [Parameter] public Action<Image> OnAdd {get; set;}
+
+    public void Open() {
+        popupVisible = true;
+        imagePath = null;
+        StateHasChanged();
+    }
+
+    private string imagePath;
+    private void setPath(string path) {
+        this.imagePath = path;
+        StateHasChanged();
+    }
+
+    private void link () {
+        if (canAdd) {
+            var image = Image.HardDriveLink(imagePath);
+            OnAdd?.Invoke(image);
+            imagePath = null;
+            popupVisible = false;
+            StateHasChanged();
+        }
+    }
+
+    private void embed() {
+        if (canAdd) {
+            var image = Image.EmbedBase64(imagePath);
+            OnAdd?.Invoke(image);
+            imagePath = null;
+            popupVisible = false;
+            StateHasChanged();
+        }
+    }
+}

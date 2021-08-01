@@ -1,0 +1,21 @@
+<div class="w3-sidebar w3-bar-block w3-animate-right panel @visibilityCss" style="width: 320px; max-width: 100%; right: 0;">
+    <div class="w3-xlarge w3-padding header">
+        @Title
+        <span class="w3-button w3-display-topright" @onclick=close>&times;</span>
+    </div>
+    <div class="w3-padding">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title {get; set;}
+    [Parameter] public bool Visible {get; set;}
+    private string visibilityCss => Visible ? "w3-show" : "w3-hide";
+    [Parameter] public Action OnClose {get; set;}
+    [Parameter] public RenderFragment ChildContent {get; set;}
+
+    private void close() {
+        OnClose?.Invoke();
+    }
+}

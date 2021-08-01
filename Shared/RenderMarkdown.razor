@@ -1,0 +1,12 @@
+<div class="markdown">
+    @((MarkupString)md.Transform(this.Text))
+</div>
+
+
+@code {
+    [Parameter] public string Text {get; set;}
+
+    private static MarkdownSharp.Markdown md = new MarkdownSharp.Markdown(
+        new MarkdownSharp.MarkdownOptions {}
+    );
+}

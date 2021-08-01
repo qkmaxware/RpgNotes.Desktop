@@ -1,0 +1,191 @@
+@using RpgNotes.Desktop.Shared.Layouts
+@using System.Text.RegularExpressions
+@inject FileManager fs
+
+<div class="w3-row">
+    <div class="w3-col m3">
+        <Section Title="Volumes" PadChildren=false>
+            <Content>
+                <div class="header">
+                    @foreach (var drive in this.drives) {
+                        <button class="w3-button w3-block w3-left-align" @onclick=@(() => directory = drive.Value)>@drive.Key</button> 
+                    }
+                </div>
+            </Content>
+        </Section>
+        <Section Title="System" PadChildren=false>
+            <Content>
+                <div class="header">
+                    @foreach (var folder in SystemDirectories) {
+                       <button class="w3-button w3-block w3-left-align" @onclick=@(() => directory = Environment.GetFolderPath(folder))>@folder</button> 
+                    }
+                </div>
+            </Content>
+        </Section>
+        <Section Title="Recent" PadChildren=false>
+            <Content>
+                <div class="header">
+                    @if (recent != null) {
+                        foreach (var folder in recent) {
+                            <button class="w3-button w3-block w3-left-align" @onclick=@(() => directory = folder)>@System.IO.Path.GetFileName(folder)</button> 
+                        }
+                    }
+                </div>
+            </Content>
+        </Section>
+    </div>
+    <div class="w3-col m9">
+        <div class="w3-row w3-padding">
+            <div class="w3-bar">
+                <button class="w3-button" @onclick=back>&larr;</button>
+                <button class="w3-button" @onclick=next>&rarr;</button>
+                <button class="w3-button" @onclick=up>&#8613;</button>
+                <button class="w3-button" @onclick=refresh>&#8635;</button>
+            </div>
+            <input @bind=directory disabled>
+        </div>
+        <div class="w3-container">
+            <ul class="w3-ul w3-hoverable w3-padding w3-round-large well" style="max-height: 50vh; overflow: auto;">
+                @foreach (var dir in System.IO.Directory.EnumerateDirectories(this.directory)) {
+                    var fname = System.IO.Path.GetFileName(dir);
+                    @if (!HideDotDirectories || !fname.StartsWith('.')) {
+                    <li @onclick=@(() => gotoDirectory(dir))>
+                        <img src="static/images/folder.svg" width=20>
+                        @fname
+                    </li>
+                    }
+                }
+                @foreach (var file in System.IO.Directory.EnumerateFiles(this.directory).Where(path => regex.IsMatch(path))) {
+                    <li @onclick=@(() => selectFile(file))>
+                        <img src="static/images/file.svg" width=20>
+                        @System.IO.Path.GetFileName(file)
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="w3-container">
+            <div class="w3-margin-top w3-margin-bottom header">
+                <div class="w3-row">
+                    @if (!SubmitOnSelect) {
+                    <div class="w3-col w3-right" style="width: 64px;">
+                        <button class="w3-button w3-block ok" @onclick=submit>Ok</button>
+                    </div>
+                    }
+                    <div class="w3-rest">
+                        <input @bind=file disabled="@(!EditFilename)" class="header"></input>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool HideDotDirectories {get; set;} = true;
+    [Parameter] public bool SubmitOnSelect {get; set;} = false;
+    [Parameter] public bool EditFilename {get; set;}
+    [Parameter] public string Pattern {
+        get => regex.ToString();
+        set {
+            regex = new Regex(value);
+        }
+    }
+    private Regex regex = new Regex(".*");
+    [Parameter] public Action<string> OnFileSelected {get; set;}
+
+    private Environment.SpecialFolder[] SystemDirectories = new Environment.SpecialFolder[]{
+        Environment.SpecialFolder.UserProfile,
+        Environment.SpecialFolder.Desktop,
+        Environment.SpecialFolder.MyDocuments,
+        Environment.SpecialFolder.MyVideos,
+        Environment.SpecialFolder.MyPictures,
+        Environment.SpecialFolder.ApplicationData,
+    };
+    private string directory;
+    private string file;
+
+    private static List<string> recent = new List<string>();
+    private Dictionary<string, string> drives = new Dictionary<string, string>();
+    private List<string> history = new List<string>();
+    private int historyIndex = 0;
+
+    protected override void OnInitialized() {
+        // Goto default starting location
+        this.directory = fs?.AppDataPath ?? System.IO.Directory.GetCurrentDirectory();
+
+        // Fetch drive list
+        // Try catches since grabbing drive data can break the app if the drive is having issues
+        try {
+            foreach(var drive in System.IO.DriveInfo.GetDrives()) {
+                try{
+                    var name = drive.Name + " " + drive.VolumeLabel;
+                    var path = drive.RootDirectory.FullName;
+                    this.drives.Add(name, path);
+                } catch {}
+            }
+        } catch {}
+    }
+
+    private void addHistory(string path) {
+        // Delete up to historyIndex
+        while (historyIndex < (history.Count - 1)) {
+            history.Remove(history[history.Count - 1]);
+        }
+        // Add
+        history.Add(path);
+        historyIndex++;
+    }
+
+    private void addRecent(string path) {
+        if (!recent.Contains(path)) {
+            recent.Add(path);
+            if (recent.Count > 6) {
+                recent.RemoveAt(0);
+            }
+        }
+    }
+
+    private void submit() {
+        if (file != null) {
+            OnFileSelected?.Invoke(System.IO.Path.Combine(directory, file));
+            addRecent(directory);
+            StateHasChanged();
+        }
+    }
+
+    private void selectFile(string path) {
+        this.file = System.IO.Path.GetFileName(path);
+        if (SubmitOnSelect) {
+            this.submit();
+        }
+    }
+    private void gotoDirectory(string path) {
+        if (path != null && System.IO.Directory.Exists(path)) {
+            addHistory(directory);
+            this.directory = System.IO.Path.GetFullPath(path);
+            file = null;
+        }
+    }
+    private void back() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            if (historyIndex < this.history.Count) {
+                this.directory = history[historyIndex];
+            }
+        }
+    }
+    private void next() {
+        if (historyIndex < (this.history.Count - 1)) {
+            historyIndex++;
+            if (historyIndex < this.history.Count) {
+                this.directory = history[historyIndex];
+            }
+        }
+    }
+    private void up() {
+        gotoDirectory(System.IO.Directory.GetParent(this.directory)?.FullName);
+    }
+    private void refresh() {
+        StateHasChanged();
+    }
+}

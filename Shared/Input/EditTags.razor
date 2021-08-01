@@ -1,0 +1,50 @@
+@using RpgNotes.Desktop.Shared.Renderers
+@inject FileManager files;
+
+<div class="field" style="width: 100%; min-height: 48px;">
+<label>@Label</label>
+<div class="w3-display-container">
+    @if(isDisabled) {
+        <div>
+            @if (Tags != null) {
+                foreach (var tag in Tags) {
+                    <TagRenderer Tag=@tag></TagRenderer>
+                }
+            }
+        </div>
+        <div class="w3-display-topright edit">
+         @if (AllowEdit) {
+            <img src="static/images/edit.svg" style="width:24px; padding-top:8px;" @onclick=@(() => isDisabled = !isDisabled)>
+        }
+        </div>
+    } else {
+        <div class="w3-display-container w3-padding">
+            Comma separated list of tags
+            <div class="w3-display-topright edit">
+                @if (AllowEdit) {
+                    <img src="static/images/edit.svg" style="width:24px; padding-top:8px;" @onclick=@(() => isDisabled = !isDisabled)>
+                }
+            </div>
+        </div>
+        <textarea @bind=text style="height: 6em;"></textarea>
+    }
+</div>
+</div>
+
+@code {
+    [Parameter] public string Label {get; set;}
+    [Parameter] public bool AllowEdit {get; set;} = false;
+    [Parameter] public List<string> Tags {get; set;}
+
+    private bool isDisabled = true;
+
+
+    private string text {
+        get => string.Join(',', Tags);
+        set {
+            Tags.Clear();
+            Tags.AddRange(value.Split(',').Select(str => str.ToLower().Trim()).Where(str => !string.IsNullOrEmpty(str)));
+            files.MarkDirty();
+        }
+    }
+}

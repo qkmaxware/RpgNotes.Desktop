@@ -1,0 +1,201 @@
+@inject FileManager files
+@inject NavigationManager nav;
+@page "/article/{guid}/settings"
+@using RpgNotes.Desktop.Shared.Layouts
+
+<Navigator></Navigator>
+
+@if (article == null) {
+<div class="w3-center w3-padding">No article with id @guid</div>
+} else {
+<div class="w3-margin w3-padding panel">
+<div class="w3-margin-bottom w3-right-align">
+    <button class="w3-button w3-round error" @onclick=gotoArticle>&#8249; Back to @article.Name</button>
+</div>
+<div class="w3-border-bottom w3-margin-bottom">
+    Settings
+</div>
+<div class="w3-padding">
+    <div class="w3-row">
+        <div class="w3-col m9 w3-padding">
+            Visibility indicates who has access to search and browse for articles.
+            @if (article.Visibility == Visibility.Public) {
+                <span>Public articles are able to be searched for and can be seen in the article browser.</span>
+            }
+        </div>
+        <div class="w3-col m3">
+            <select @bind=article.Visibility>
+                @foreach (var key in Enum.GetValues<Visibility>()) {
+                    <option value=@key>@key</option>
+                }
+            </select>
+        </div>
+    </div>
+    @if (!article.IsCampaign()) {
+    <div class="w3-row">
+        <div class="w3-col m9 w3-padding">
+            An article's template dictates what kind of features and metadata the article is capable of having. Changing an article's template type can result loss of information as not all templates have the same features.
+        </div>
+        <div class="w3-col m3">
+            <button class="w3-button w3-block bright" @onclick=requestChangeTemplate>Change Template</button>
+        </div>
+    </div>
+    }
+</div>
+
+<div class="w3-border-bottom w3-margin-bottom error-text">
+    Danger Zone
+</div>
+<div class="w3-padding">
+    <div class="w3-row">
+        <div class="w3-col m9 w3-padding">
+            Perminantly delete an article. All data and connections will be perminantly lost.
+        </div>
+        <div class="w3-col m3">
+            <button class="w3-button w3-block error" @onclick=requestDelete>Delete</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<Modal Title="Delete Article" Visible=showDeletePopup OnClose=@(() => { showDeletePopup=false; StateHasChanged(); })>
+    <div class="w3-padding">
+        <p>
+            Are you sure you want to delete this article? This action cannot be undone.
+        </p>
+        <p>
+            Type <strong>@article.Name></strong> to delete.
+        </p>
+        <div class="w3-padding">
+            <input @bind=deleteName>
+        </div>
+        <div class="w3-padding w3-center">
+            <button class="w3-button @(canDelete?"ok":"disable")" @onclick=@(() => deleteNow())>Confirm</button>
+        </div>
+    </div>
+</Modal>
+<Modal Title="Choose Template" Visible=showChangeTemplatePopup OnClose=@(() => { showChangeTemplatePopup=false; StateHasChanged(); })>
+    <GridList T=IArticleTemplate LargeLayout=Layout.SixColumns MediumLayout=Layout.FourColumns SmallLayout=Layout.TwoColumns Items=Home.LoadedTemplates>
+            <div class="w3-padding">
+                <div class="w3-border w3-round-large w3-center well" @onclick=@(() => selectChangeTemplate(context))>
+                    <img src="@context.TemplateIcon().GetUrl()" style="width:100%; height:auto;">
+                    @context.TemplateName()
+                </div>
+            </div>
+        </GridList>
+    <div class="w3-padding w3-center">
+        @if (changeTemplate != null) {
+            <button class="w3-button ok" @onclick=@(() => changeNow())>Change to @changeTemplate.TemplateName()?</button>
+        }
+    </div>
+</Modal>
+
+}
+
+@code {
+    [Parameter] public string guid {get; set;}
+
+    private World world;
+    private Article article;
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        this.world = files.Data();
+        if (this.world != null) {
+            this.article = this.world.Articles[guid];
+        }
+    }
+
+    private void gotoArticle() {
+        if (article != null) {
+            nav.Article(article);
+        }
+    }
+
+    #region Template
+    private bool showChangeTemplatePopup = false;
+    private IArticleTemplate changeTemplate;
+    private void requestChangeTemplate() {
+        showChangeTemplatePopup = true;
+        this.changeTemplate = null;
+    }
+    private void selectChangeTemplate(IArticleTemplate template) {
+        this.changeTemplate = template;
+    }
+    private void changeNow() {
+        if (article == null || world == null || changeTemplate == null)
+            return;
+
+        // Copy over specific data
+        var next = changeTemplate.Create(this.world.System);
+        next.Guid = article.Guid;
+        next.CreatedAt = article.CreatedAt;
+        next.Visibility = article.Visibility;
+        next.Name = article.Name;
+        next.MarkdownContent = article.MarkdownContent;
+        next.Notes = article.Notes;
+        if (article.Tags != null) {
+            next.Tags = new List<string>(article.Tags);
+        }
+        if (article.Images != null) {
+            next.Images = new List<Image>(article.Images);
+        }
+    
+        // Copy over custom data
+        if (next.CustomDetails != null && article.CustomDetails != null) {
+            foreach (var data in next.CustomDetails) {
+                // find similar data in current (same name and type)
+                var similar = article.CustomDetails.Where(detail => detail.Name == data.Name && detail.Type == data.Type).FirstOrDefault();
+                if (similar != null) {
+                    data.Value = similar.Value;
+                }
+            }
+        }
+        if (next.CustomDataBlocks != null && article.CustomDataBlocks != null) {
+            foreach (var block in next.CustomDataBlocks) {
+                var similarBlock = article.CustomDataBlocks.Where(blockToCopy => blockToCopy.Name == block.Name).FirstOrDefault();
+                if (similarBlock != null) {
+                    if (block.Data != null && similarBlock.Data != null) {
+                        foreach (var data in block.Data) {
+                            var similarData = similarBlock.Data.Where(detail => detail.Name == data.Name && detail.Type == data.Type).FirstOrDefault();
+                            if (similarData != null) {
+                                data.Value = similarData.Value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Copy "special" data
+        if (next.Map != null && article.Map != null) {
+            next.Map = article.Map; // Preserve
+        }
+        if (next.CharacterSheet != null && article.CharacterSheet != null) {
+            next.CharacterSheet = article.CharacterSheet; // Preserve
+        }
+
+        // Update existing entry
+        this.world.Articles[article.Guid] = next;
+        this.article = next;
+
+        // Close popup
+        showChangeTemplatePopup = false;
+    }
+    #endregion
+
+    #region Deletion
+    private bool showDeletePopup = false;
+    private string deleteName;
+    private bool canDelete => world != null && article != null && article.Name == deleteName;
+    private void requestDelete() {
+        showDeletePopup = true;
+        deleteName = null;
+    }
+    private void deleteNow() {
+        if (canDelete) {    
+            world.Articles.Remove(article);
+            nav.Home();
+        }
+    }
+    #endregion
+}

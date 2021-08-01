@@ -1,0 +1,57 @@
+name: Deploy-Win
+on:
+  release: 
+    types:
+    - released
+    branches: 
+    - "root"
+jobs:
+  deploy:
+    name: Deploy Windows Binary
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@master
+        with:
+          submodules: "recursive"
+          fetch-depth: 0
+
+      - name: Setup NPM 
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Setup Dotnet
+        uses: actions/setup-dotnet@v1 
+        with:
+          dotnet-version: '5.0.x' # SDK Version to use
+
+      - name: Install Electron Tooling
+        run: dotnet tool install ElectronNET.CLI -g
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build x64 Binary
+        run: electronize build /target win
+      - name: Rename x64 Binary
+        run Rename-Item -Path "bin/Desktop/RpgNotes.Desktop 1.0.0.exe" -NewName RpgNotes.Windows.x64.exe
+
+      - name: Build x86 Binary
+        run: electronize build /target custom "win7-x86;win32" /electron-arch ia32 
+      - name: Rename x86 Binary
+        run Rename-Item -Path "bin/Desktop/RpgNotes.Desktop 1.0.0.exe" -NewName RpgNotes.Windows.x86.exe
+
+      - name: Push x64 Binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          file: bin/Desktop/RpgNotes.Windows.x64.exe
+      - name: Push x86 Binary
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          file: bin/Desktop/RpgNotes.Windows.x86.exe
+        

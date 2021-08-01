@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="64"
+   height="64"
+   viewBox="0 0 16.933333 16.933334"
+   version="1.1"
+   id="svg8"
+   inkscape:version="1.1 (c68e22c387, 2021-05-23)"
+   sodipodi:docname="folder.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="10.362745"
+     inkscape:cx="27.936613"
+     inkscape:cy="35.463576"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     inkscape:document-rotation="0"
+     showgrid="false"
+     units="px"
+     inkscape:window-width="1920"
+     inkscape:window-height="1001"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:pagecheckerboard="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       id="rect925"
+       style="fill:#ffffff;stroke:#ffffff;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round"
+       d="m 4.0235269,2.6151991 c -0.6305529,0 -1.1384317,0.5073618 -1.1384317,1.137915 v 0.510563 H 2.4494629 c -0.748812,0 -1.3513387,0.6030436 -1.3513387,1.3518554 v 6.9990555 c 0,0.748813 0.6025267,1.351339 1.3513387,1.351339 H 14.504024 c 0.748812,0 1.351339,-0.602526 1.351339,-1.351339 V 5.6155325 c 0,-0.7488118 -0.602527,-1.3518554 -1.351339,-1.3518554 H 8.5276448 v -0.510563 c 0,-0.6305532 -0.5073621,-1.137915 -1.1379149,-1.137915 z" />
+  </g>
+</svg>

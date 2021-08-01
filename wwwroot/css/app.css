@@ -1,0 +1,198 @@
+:root {
+    --theme-font-colour: white;
+    --theme-base: #525252;
+    --theme-lighlight-bright: #7e7e7e;
+    --theme-highlight-error: #ca3e47;
+    --theme-highlight-ok: #317531;
+    --theme-panel: #414141;
+    --theme-disabled: #313131;
+    --theme-header: #1a1a1a;
+}
+
+body {
+    overscroll-behavior: none;
+    background-color: var(--theme-base);
+    color: var(--theme-font-colour);
+}
+
+h1 {
+    border-bottom: 1px solid white;
+}
+
+input, select {
+    width: 100%;
+    padding: 8px;
+    display: block;
+    background-color: var(--theme-disabled);
+    color: white;
+    border: none;
+    border-bottom:1px solid white;
+}
+
+input:disabled {
+    background-color: var(--theme-panel);
+    border-bottom: none;
+}
+
+textarea {
+    width: 100%;
+    display: block;
+    background-color: var(--theme-disabled);
+    color: white;
+    border: none;
+    border-bottom:1px solid white;
+    min-height: 64px;
+    resize: vertical;
+}
+
+textarea:disabled {
+    background-color: var(--theme-panel);
+    border-bottom: none;
+}
+
+blockquote {
+    margin: 0px 0px 20px 0px;
+    padding: 40px 40px 20px 50px;
+    border-top: 1px solid var(--theme-disabled);
+    border-bottom: 1px solid var(--theme-disabled);
+}
+blockquote::before {
+    content: "\201C";
+    display: block;
+    color: rgb(182, 181, 181);
+    font-family: Georgia, serif;
+    font-size: 80px;
+    height: 0;
+    left: -50px;
+    position: relative;
+    top: -10px;
+}
+
+.tooltip {
+    position: relative;
+}
+
+.tooltip .hint {
+    visibility: hidden;
+    text-align: center;
+    border-radius: 6px;
+    padding: 6px 0;
+    position: absolute;
+    z-index: 1;
+    top: -48px;
+    left: 50%;
+    width: 256px;
+    margin-left: -128px;
+    overflow: hidden;
+    background-color: var(--theme-header);
+    color: white;
+    font-size: small;
+}
+
+.tooltip .hint::after {
+    content: "";
+    z-index: inherit;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1a1a1a;
+}
+
+.tooltip:hover .hint {
+    visibility: visible;
+}
+
+.field .edit {
+    visibility: hidden;
+}
+.field:hover .edit {
+    visibility: visible;
+}
+
+.fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.border {
+    border-width: 1px;
+    border-color: var(--theme-font-colour);
+}
+
+.border.solid {
+    border-style: solid;
+}
+
+.border.dashed {
+    border-style: dashed;
+}
+
+.base {
+    background-color: var(--theme-base);
+}
+.base-border {
+    border-color: var(--theme-base);
+}
+
+.error {
+    background-color: var(--theme-highlight-error);
+}
+.error-border {
+    border-color: var(--theme-highlight-error);
+}
+.error-text {
+    color: var(--theme-highlight-error);
+}
+
+.ok {
+    background-color: var(--theme-highlight-ok);
+}
+.ok-border {
+    border-color: var(--theme-highlight-ok);
+}
+
+.bright {
+    background-color: var(--theme-lighlight-bright);
+}
+.bright-border {
+    border-color: var(--theme-lighlight-bright);
+}
+
+.disable {
+    background-color: var(--theme-disabled);
+}
+.disable-border {
+    border-color: var(--theme-disabled);
+}
+
+.panel {
+    background-color: var(--theme-panel);
+}
+
+.well {
+    background-color: var(--theme-disabled);
+    color: var(--theme-font-colour);
+}
+
+.header {
+    background-color: var(--theme-header);
+}
+.header-border {
+    border-color: var(--theme-header);
+}
+
+.grid {
+    height: 100%;
+    width: 100%;
+}
+.grid {
+    background-image:
+      repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
+      repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+}

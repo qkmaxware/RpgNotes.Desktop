@@ -1,0 +1,40 @@
+@inject FileManager files;
+
+<div class="field" style="width: 100%; min-height: 128px;">
+<label>@Label</label>
+<div class="w3-display-container">
+    @if(isDisabled) {
+        <RenderMarkdown Text=@text></RenderMarkdown>
+        <div class="w3-display-topright edit">
+         @if (AllowEdit) {
+            <img src="static/images/edit.svg" style="width:24px; padding-top:8px;" @onclick=@(() => isDisabled = !isDisabled)>
+        }
+        </div>
+    } else {
+        <div class="w3-right-align edit">
+            @if (AllowEdit) {
+                <img src="static/images/edit.svg" style="width:24px; padding-top:8px;" @onclick=@(() => isDisabled = !isDisabled)>
+            }
+        </div>
+        <textarea @bind=text style="height: 50vh;"></textarea>
+    }
+</div>
+</div>
+
+@code {
+    [Parameter] public string Label {get; set;}
+    [Parameter] public bool AllowEdit {get; set;} = false;
+    [Parameter] public Func<string> Getter {get; set;}
+    [Parameter] public Action<string> Setter {get; set;}
+
+    private bool isDisabled = true;
+    private string text {
+        get => Getter?.Invoke();
+        set {
+            Setter?.Invoke(value);
+            files.MarkDirty();
+            StateHasChanged();
+        }
+    }
+
+}
