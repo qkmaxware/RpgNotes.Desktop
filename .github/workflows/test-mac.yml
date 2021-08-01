@@ -1,10 +1,5 @@
 name: Test-Mac
-on:
-  release: 
-    types:
-    - released
-    branches: 
-    - "root"
+on: push
 jobs:
   deploy:
     name: Test MacOs Binary

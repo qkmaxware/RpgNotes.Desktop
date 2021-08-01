@@ -1,8 +1,5 @@
 name: Test-Linux
-on:
-  release: 
-    types:
-    - push
+on: push
 jobs:
   deploy:
     name: Test Linux Binary

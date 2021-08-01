@@ -1,8 +1,5 @@
 name: Test-Win
-on:
-  release: 
-    types:
-    - push
+on: push
 jobs:
   deploy:
     name: Test Windows Binary
