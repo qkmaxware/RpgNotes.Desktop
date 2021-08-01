@@ -34,12 +34,16 @@ jobs:
 
       - name: Build x64 Binary
         run: electronize build /target linux
+
+      - name: Check Binaries
+        run: ls bin/Desktop/
+
       - name: Rename x64 Binary
-        run: mv "bin/Desktop/RpgNotes.Desktop" "bin/Desktop/RpgNotes.Linux.x64"
+        run: mv "bin/Desktop/RpgNotes.Desktop-1.0.0.AppImage" "bin/Desktop/RpgNotes.Linux.x64.AppImage"
 
       - name: Push x64 Binary
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
-          file: bin/Desktop/RpgNotes.Linux.x64
+          file: bin/Desktop/RpgNotes.Linux.x64.AppImage
