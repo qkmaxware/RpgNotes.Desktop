@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 
 namespace RpgNotes.Desktop.Data {
 
@@ -38,6 +40,17 @@ public class RpgSystem {
             .Select(con => (RpgSystem)con.GetValue(null, null))
             .Where(sys => sys != null);
         return systems.ToList();
+    }
+    public static List<RpgSystem> LoadSystemsFromJsonDirectory(string directory) {
+        List<RpgSystem> loaded = new List<RpgSystem>();
+        foreach (var file in Directory.GetFiles(directory, "*.json")) {
+            try {
+                var content = File.ReadAllText(file);
+                var system = JsonSerializer.Deserialize<RpgSystem>(content);
+                loaded.Add(system);
+            } catch {}
+        }
+        return loaded;
     }
 }
 

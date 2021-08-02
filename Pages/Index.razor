@@ -48,7 +48,9 @@
                 </p>
                 <div class="w3-round-large w3-padding well">
                     @createSelectedSystem.Publication.Publisher (@(createSelectedSystem.Publication.YearOfPublication))
+                    @if (!string.IsNullOrEmpty(createSelectedSystem.Publication.Url)) {
                     <br><a target="_blank" href="@createSelectedSystem.Publication.Url">Official Website</a>
+                    }
                 </div>
             </div>
         </div>
@@ -61,11 +63,44 @@
 
 @code {
     private static string FileNameExtensionPattern => @"\" + FileManager.SaveFileExtension + "$";
-    private static List<RpgSystem> systems = RpgSystem.FindRpgSystems();
+    private static List<RpgSystem> systems = null;
 
     protected override void OnInitialized() {
         if (files.HasLoadedSavefile()) {
             nav.Home();
+        }
+
+        if (systems == null) {
+            systems = RpgSystem
+            .FindRpgSystems()
+            .Concat(RpgSystem.LoadSystemsFromJsonDirectory(files.BonusSystemDataPath))
+            .OrderBy(system => system.Name)
+            .Concat(new List<RpgSystem> {
+                // These 2 are always at the bottom 
+                new RpgSystem {
+                    Name = "Other D6",
+                    Description = "Various other RPG systems whose main dice is the d6",
+                    Publication = new Publication {
+                        Publisher = "Many",
+                        Url = "",
+                    },
+                    ThemeColour = new RGB(255, 255, 255),
+                    IconImage = new Image { WebPath = "static/images/logos/genericd6.svg" },
+                    Flags = new RpgSystemFlags{},
+                },
+                new RpgSystem {
+                    Name = "Other D20",
+                    Description = "Various other RPG systems whose main dice is the d20",
+                    Publication = new Publication {
+                        Publisher = "Many",
+                        Url = "",
+                    },
+                    ThemeColour = new RGB(255, 255, 255),
+                    IconImage = new Image { WebPath = "static/images/logos/generic.svg" },
+                    Flags = new RpgSystemFlags{},
+                }
+            })
+            .ToList();
         }
     }
 

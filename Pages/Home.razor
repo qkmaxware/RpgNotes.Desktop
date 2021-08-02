@@ -101,12 +101,20 @@
 </Modal>
 
 @code {
-    private static readonly List<IArticleTemplate> templates = Article.FindArticleTemplates().OrderBy(template => template.TemplateName()).ToList();
-    public static List<IArticleTemplate> LoadedTemplates => new List<IArticleTemplate>(templates);
+    private static List<IArticleTemplate> templates = null;
+    public static List<IArticleTemplate> LoadedTemplates => templates == null ? new List<IArticleTemplate>() : new List<IArticleTemplate>(templates);
     
     private World world;
     protected override void OnInitialized() {
         world = files.Data();   
+
+        if (templates == null) {
+            templates = Article
+            .FindArticleTemplates()
+            .Concat(Article.LoadArticleTemplatesFromJsonDirectory(files.BonusTemplateDataPath))
+            .OrderBy(template => template.TemplateName())
+            .ToList();
+        }
     }    
 
     private bool showNewArticleModal = false;

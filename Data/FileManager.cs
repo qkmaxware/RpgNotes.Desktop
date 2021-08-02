@@ -15,18 +15,18 @@ public class FileManager {
 
     public string AppDataPath {get; private set;}
     private string saveDataPath;
-    private string bonusSystemDataPath;
-    private string bonusTemplateDataPath;
+    public string BonusSystemDataPath {get; private set;}
+    public string BonusTemplateDataPath {get; private set;}
 
     public FileManager() {
         var systemDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         AppDataPath = Path.Combine(systemDataPath, typeof(FileManager).Assembly.GetName().Name);
-        bonusSystemDataPath = Path.Combine(AppDataPath, "Systems");
-        bonusTemplateDataPath = Path.Combine(AppDataPath, "Templates");
+        BonusSystemDataPath = Path.Combine(AppDataPath, "Systems");
+        BonusTemplateDataPath = Path.Combine(AppDataPath, "Templates");
         saveDataPath = Path.Combine(AppDataPath, "Save");
 
-        Directory.CreateDirectory(bonusSystemDataPath);
-        Directory.CreateDirectory(bonusTemplateDataPath);
+        Directory.CreateDirectory(BonusSystemDataPath);
+        Directory.CreateDirectory(BonusTemplateDataPath);
         Directory.CreateDirectory(saveDataPath);
     }
 

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using RpgNotes.Desktop.Data.Custom;
+using RpgNotes.Desktop.Data.Templates;
 
 namespace RpgNotes.Desktop.Data {
 
@@ -64,6 +66,21 @@ public class Article {
         // Create instances of all the found types
         var templates = types.Select(t => (IArticleTemplate)Activator.CreateInstance(t));
         return templates.ToList();
+    }
+
+    public static List<IArticleTemplate> LoadArticleTemplatesFromJsonDirectory(string directory) {
+        List<IArticleTemplate> loaded = new List<IArticleTemplate>();
+        foreach (var file in Directory.GetFiles(directory, "*.json")) {
+            try {
+                var content = File.ReadAllText(file);
+                var template = new JsonTemplateArticle(Path.GetFileName(file), content);
+                // Test that the template works
+                var testArticle = template.Create(null);
+                if (testArticle != null)
+                    loaded.Add(template);
+            } catch {}
+        }
+        return loaded;
     }
 }
 
