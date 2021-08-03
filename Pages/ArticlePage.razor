@@ -117,29 +117,30 @@
     <div class="w3-col l9 m6">
         <TabPanel>
             <TabPage Title="Content">
-                <div class="w3-padding">
-                    <EditMarkdown AllowEdit=true Getter=@(() => article.MarkdownContent) Setter=@((content) => article.MarkdownContent = content)></EditMarkdown>
+                <div class="w3-padding" style="overflow-x: hidden;">
+                    <EditMarkdown AllowEdit=true AvailableImages=@article.Images Getter=@(() => article.MarkdownContent) Setter=@((content) => article.MarkdownContent = content)></EditMarkdown>
                 </div>
             </TabPage>
             @if (article.IsCampaign()) {
             <TabPage Title="Session Reports">
                 <div class="w3-padding">
-                    <textarea @bind="sessionReportContent"></textarea>
                     <div class="w3-right-align">
                         <div class="w3-dropdown-click" style="float: none;">
-                            <button class="w3-button w3-round" @onclick=@(() => showReportOptions = !showReportOptions)>+ Report &#x25BE;</button>
-                            <div class="w3-dropdown-content w3-bar-block w3-card-4 well @showReportOptionsCss">
-                                
+                            <button class="w3-button w3-round well" @onclick=@(() => showReportOptions = !showReportOptions)>+ Report &#x25BE;</button>
+                            <div class="w3-dropdown-content w3-bar-block w3-card-4 well @showReportOptionsCss" style="right:0;">
+                                @foreach (var report in this.sessionTemplates) {
+                                    <button class="w3-button w3-bar-item well" @onclick=@(() => newSessionReport(report))>@report.Key</button>
+                                }
                             </div>
                         </div>
                     </div>
                 </div>
                 @if (article.Campaign.SessionReports != null) {
                     <Timeline Items=@(article.Campaign.SessionReports.OrderByDescending(r => r.PlayDate))>
-                        <strong>@context.PlayDate.ToString("D")</strong>
-                        <p>
-                            @context.Content
-                        </p>
+                        <div class="timeline-markdown">
+                            <strong>@context.PlayDate.ToString("f")</strong>
+                            <RenderMarkdown Text=@context.Content></RenderMarkdown>
+                        </div>
                     </Timeline>
                 }
             </TabPage>
@@ -211,6 +212,15 @@
         </div>
     </div>
 </Modal>
+<Modal Title="New Report" Visible=showNewSessionReport OnClose=@(() => { showNewSessionReport = false; StateHasChanged(); })>
+    <div class="w3-padding">
+        <EditMarkdown @ref=sessionReportEditor AllowEdit=true AvailableImages=@(article.Images) Getter=@(() => reportString) Setter=@((text) => reportString=text)>
+        </EditMarkdown>
+        <div class="w3-padding w3-center">
+            <button class="w3-button ok" @onclick=saveSessionReport>Add</button>
+        </div>
+    </div>
+</Modal>
 }
 
 @code {
@@ -221,8 +231,8 @@
     private List<Connection> cachedConnections; // makes it faster to iterate over when need be
     private Connection defaultPosition;
     private List<TabAction> infoPanelActions;
-    protected override void OnInitialized() {
-        base.OnInitialized();
+    protected override void OnParametersSet () {
+        base.OnParametersSet();
         this.world = files.Data();
         this.infoPanelActions = new List<TabAction> {
             new TabAction{
@@ -359,8 +369,24 @@
         this.familyTree = family.Select(row => row.Select(guid => this.world.Articles[guid]).Where(art => art != null).ToList()).ToList();
     }
 
-    private string sessionReportContent;
-    private void addSessionReport() {
+    private bool showReportOptions = false;
+    private string showReportOptionsCss => showReportOptions ? "w3-show" : "w3-hide";
+    private Dictionary<string, Func<SessionReportTemplate>> sessionTemplates = new Dictionary<string, Func<SessionReportTemplate>> {
+        { "Generic Report", () => new GenericSessionReport() },  
+        { "Battle Report", () => new SessionBattleReport() },  
+        { "Item Found", () => new ItemAquiredReport() },
+        { "Important Event", () => new ImportantEventReport() },
+    };
+    private bool showNewSessionReport = false;
+    private string reportString;
+    private EditMarkdown sessionReportEditor;
+    private void newSessionReport(KeyValuePair<string, Func<SessionReportTemplate>> constructor) {
+        reportString = constructor.Value().ToMarkdown();
+        sessionReportEditor?.Edit();
+        showNewSessionReport = true;
+        showReportOptions = false;
+    }
+    private void saveSessionReport() {
         if (article != null && article.Campaign != null) {
             if (article.Campaign.SessionReports == null) {
                 article.Campaign.SessionReports = new List<SessionReport>();
@@ -368,13 +394,13 @@
 
             var report = new SessionReport {
                 PlayDate = DateTime.Now,
-                Content = sessionReportContent
+                Content = reportString
             };
-            sessionReportContent = null;
             article.Campaign.SessionReports.Add(report);
+            reportString = null;
         }
-    }
 
-    private bool showReportOptions = false;
-    private string showReportOptionsCss => showReportOptions ? "w3-show" : "w3-hide";
+        showNewSessionReport = false;
+        StateHasChanged();
+    }
 }

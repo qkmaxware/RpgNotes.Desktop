@@ -156,6 +156,9 @@ blockquote::before {
 .ok-border {
     border-color: var(--theme-highlight-ok);
 }
+.ok-text {
+    color: var(--theme-highlight-ok);
+}
 
 .bright {
     background-color: var(--theme-lighlight-bright);
@@ -195,4 +198,25 @@ blockquote::before {
     background-image:
       repeating-linear-gradient(#ccc 0 1px, transparent 1px 100%),
       repeating-linear-gradient(90deg, #ccc 0 1px, transparent 1px 100%);
+}
+
+.timeline-markdown h1{
+    font-size: medium;
+    font-weight: bold;
+    border: none;
+}
+.timeline-markdown h2{
+    font-size: medium;
+}
+.timeline-markdown h3{
+    font-size: medium;
+}
+.timeline-markdown h4{
+    font-size: medium;
+}
+.timeline-markdown h5{
+    font-size: medium;
+}
+.timeline-markdown h6{
+    font-size: medium;
 }

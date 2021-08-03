@@ -8,6 +8,24 @@ window.RpgNotes = (function(){
             await navigator.clipboard.writeText(input);
         }
     }
+    
+    /**
+     * Get the start of a selection in an input box
+     * @param {input | textarea} input 
+     * @returns Number
+     */
+    function GetSelectionStart(input) {
+        return input.selectionStart;
+    }
+
+    /**
+     * Get the end of a selection in an input box
+     * @param {input | textarea} input 
+     * @returns Number
+     */
+    function GetSelectionEnd(input) {
+        return input.selectionEnd;
+    }
 
     /**
      * Fetch the full path of a file in a file input element
@@ -206,6 +224,8 @@ window.RpgNotes = (function(){
         FileInputFullPath,
         InputBindFileDrop,
         CopyToClipboard,
+        GetSelectionStart,
+        GetSelectionEnd,
         Map: {
             Setup: SetupMap,
             PanTo: MapPanTo,

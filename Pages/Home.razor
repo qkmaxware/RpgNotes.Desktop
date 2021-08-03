@@ -14,7 +14,7 @@
 
 <TabPanel>
     <TabPage Title="Active Campaigns">
-        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; overflow-x: auto;">
+        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto;">
             <div class="w3-padding" style="display: inline-block;">
                 <div class="w3-button w3-round-large w3-display-container article-preview-container border dashed" style="width: 120px; height: 120px" @onclick=@(() => tryAddCampaign())>
                     <div class="w3-display-middle">
@@ -39,7 +39,7 @@
         </div>
     </TabPage>
     <TabPage Title="Finished Campaigns">
-        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; white-space: nowrap; overflow-x: auto;">
+        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto;">
             @if (world != null) {
                 foreach (var campaign in world.Articles.EnumerateCampaigns().Where(c => (c["Active"]?.AsBool() ?? false) != true)) {
                     <div class="w3-padding" style="display: inline-block;">

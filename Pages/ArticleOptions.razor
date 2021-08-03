@@ -97,8 +97,8 @@
 
     private World world;
     private Article article;
-    protected override void OnInitialized() {
-        base.OnInitialized();
+    protected override void OnParametersSet () {
+        base.OnParametersSet ();
         this.world = files.Data();
         if (this.world != null) {
             this.article = this.world.Articles[guid];
@@ -195,6 +195,7 @@
         if (canDelete) {    
             world.Articles.Remove(article);
             nav.Home();
+            files.MarkDirty();
         }
     }
     #endregion

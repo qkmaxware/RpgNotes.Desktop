@@ -36,7 +36,7 @@ The following terms are used in the documentation and in the application itself.
    1. Define a name and what RPG system you are using. Use **Other** if your system is not listed.
 2. Create an article by clicking on any of the available templates
    1. Name the entry and provide a brief description (optional). 
-3. Create a cmapaign by clicking the '+' button on the home page under **Active Campaigs**
+3. Create a campaign by clicking the '+' button on the home page under **Active Campaigs**
     1. Name the entry and provide a brief description (optional). 
 4. Use the article browser to find articles 
 5. For any article
