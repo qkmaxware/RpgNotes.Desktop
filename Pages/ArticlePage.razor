@@ -126,7 +126,12 @@
                 <div class="w3-padding">
                     <textarea @bind="sessionReportContent"></textarea>
                     <div class="w3-right-align">
-                        <button class="w3-button w3-round" @onclick=addSessionReport>+ Report</button>
+                        <div class="w3-dropdown-click" style="float: none;">
+                            <button class="w3-button w3-round" @onclick=@(() => showReportOptions = !showReportOptions)>+ Report &#x25BE;</button>
+                            <div class="w3-dropdown-content w3-bar-block w3-card-4 well @showReportOptionsCss">
+                                
+                            </div>
+                        </div>
                     </div>
                 </div>
                 @if (article.Campaign.SessionReports != null) {
@@ -369,4 +374,7 @@
             article.Campaign.SessionReports.Add(report);
         }
     }
+
+    private bool showReportOptions = false;
+    private string showReportOptionsCss => showReportOptions ? "w3-show" : "w3-hide";
 }
