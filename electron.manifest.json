@@ -1,10 +1,10 @@
 {
   "executable": "RpgNotes.Desktop",
   "splashscreen": {
-    "imageFile": ""
+    "imageFile": "wwwroot/static/images/splash.png"
   },
   "name": "RpgNotes.Desktop",
-  "author": "",
+  "author": "Colin Halseth",
   "singleInstance": false,
   "environment": "Production",
   "build": {
@@ -14,12 +14,17 @@
     "buildVersion": "1.0.0",
     "compression": "maximum",
     "win": { 
-      "target": ["portable"] 
+      "target": ["portable"],
+      "icon": "../../../buildResources/icon.png"
+    },
+    "mac": {
+      "icon": "../../../buildResources/icon.png"
     },
     "linux": {
       "target": ["AppImage"]
     },
     "directories": {
+      "buildResources": "../../../buildResources",
       "output": "../../../bin/Desktop"
     },
     "extraResources": [

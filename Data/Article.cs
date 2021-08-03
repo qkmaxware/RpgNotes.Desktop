@@ -44,10 +44,10 @@ public class Article {
     public bool HasMap() => IsMapCapable() && Map.Background != null;
     
     // Character data
-    public CharacterSheet CharacterSheet;
+    public CharacterSheet CharacterSheet {get; set;}
 
     // Campaign data
-    public CampaignData Campaign;
+    public CampaignData Campaign {get; set;}
     public bool IsCampaign() => Campaign != null;
 
     // ----------------------------------
