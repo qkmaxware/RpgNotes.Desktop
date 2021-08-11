@@ -39,6 +39,9 @@ jobs:
         run: dotnet restore
 
       - name: Build x64 Binary
+        env: 
+          GITHUB_USERNAME: qkmaxware
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: electronize build /target win
 
       - name: Check Binaries
