@@ -2,11 +2,16 @@
 @using RpgNotes.Desktop.Shared.Layouts
 @using System.IO
 
-<Modal Title="Add Image" Visible=popupVisible OnClose=@(() => { popupVisible=false; StateHasChanged(); })>
-    @*@if (HybridSupport.IsElectronActive){
-    <FileUploader Id="attachArticleImage" Accept="image/*" OnFileChanged=setPath></FileUploader>
-    } else {*@
-    <FileExplorer EditFilename=false SubmitOnSelect=true Pattern="\.png$|\.jpg$|\.jpeg$|\.tif$|\.tiff$|\.svg$|\.gif$" OnFileSelected=setPath></FileExplorer>
+<Modal Title="Add Image" Visible=popupVisible OnClose=close>
+    @if (string.IsNullOrEmpty(imagePath)) {
+    <FileExplorer Load=true OnFileSelected=setPath OnCancelled=close Patterns="png,jpeg,tif,svg,gif">
+    </FileExplorer>
+    } else {
+    <div class="w3-padding w3-center">
+        <button class="w3-button" @onclick=@(() => imagePath = null)>change image</button>
+        <br>
+        <img src="@(image.GetUrl())" style="width: auto; max-width: 240px; height: auto; max-height: 240px;">
+    </div>
     <div class="w3-padding w3-center">
         <button class="w3-button @(canAdd ? "ok" : "disable")" @onclick=link>
             <img src="static/images/link.svg" width=20> Link
@@ -15,6 +20,7 @@
             <img src="static/images/embed.svg" width=20> Embed
         </button>
     </div>
+    }
 </Modal>
 
 @code {
@@ -28,8 +34,13 @@
         imagePath = null;
         StateHasChanged();
     }
+    private void close() {
+        popupVisible=false; 
+        StateHasChanged();
+    }
 
     private string imagePath;
+    private Image image => Image.HardDriveLink(imagePath);
     private void setPath(string path) {
         this.imagePath = path;
         StateHasChanged();

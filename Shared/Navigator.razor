@@ -45,12 +45,12 @@
     </div>
 </div>
 
-<Modal Title="Save As" Visible=showSaveAsPopup OnClose=@(() => { showSaveAsPopup = false; StateHasChanged(); })>
-    <FileExplorer EditFilename=true Pattern=@FileNameExtensionPattern OnFileSelected=saveAsDone></FileExplorer>
+<Modal Title="Save As" Visible=showSaveAsPopup OnClose=closeSave>
+    <FileExplorer Save=true OnFileSelected=saveAsDone OnCancelled=closeSave Patterns=@FileManager.SaveFileExtension>
+    </FileExplorer>
 </Modal>
 
 @code {
-    private static string FileNameExtensionPattern => @"\" + FileManager.SaveFileExtension + "$";
     [Parameter] public RenderFragment ChildContent {get; set;}
 
     private void home() {
@@ -75,6 +75,10 @@
         } else {
             files.Save(files.SavePath);
         }
+    }
+    private void closeSave() {
+        showSaveAsPopup = false; 
+        StateHasChanged();
     }
 
     private bool showSaveAsPopup = false;

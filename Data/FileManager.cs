@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace RpgNotes.Desktop.Data {
 
 public class FileManager {
-    public static string SaveFileExtension = ".rpg";
+    public static string SaveFileExtension = "rpg";
     private object key = new object();
     private World current;
     public string SavePath {get; private set;}
@@ -73,8 +73,9 @@ public class FileManager {
         }
     }
     public void Save(string path) {
-        if (!path.EndsWith(SaveFileExtension)) {
-            path = path + SaveFileExtension;
+        var extWithDot = "." + SaveFileExtension;
+        if (!path.EndsWith(extWithDot)) {
+            path = path + extWithDot;
         }
         lock(key) {
             if (this.current != null) {
