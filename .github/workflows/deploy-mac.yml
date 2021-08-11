@@ -27,9 +27,15 @@ jobs:
           dotnet-version: '5.0.x' # SDK Version to use
 
       - name: Install Electron Tooling
+        env: 
+          GITHUB_USERNAME: qkmaxware
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet tool install ElectronNET.CLI -g
 
       - name: Restore Dependencies
+        env: 
+          GITHUB_USERNAME: qkmaxware
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet restore
 
       - name: Build x64 Binary
