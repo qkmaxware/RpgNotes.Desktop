@@ -12,8 +12,8 @@ public interface IRpgSystemProvider {
 }
 
 public class RpgSystemFlags {
-    public bool MultipleSpecies;
-    public bool ClassBased;
+    public bool MultipleSpecies {get; set;}
+    public bool ClassBased {get; set;}
 }
 
 public class RpgSystem {
