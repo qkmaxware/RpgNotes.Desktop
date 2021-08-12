@@ -27,9 +27,9 @@
                         @if (generatorKey == (CustomId)) {
                         <div class="w3-padding w3-leftbar">
                             <label>Connection to</label>
-                            <input type="text" placeholder="@(myEntryName)'s relationship to @(withEntryName)" @bind=forward>
+                            <input type="text" placeholder="@(myEntryName)'s relationship to @(withEntryNameOrUnknown)" @bind=forward>
                             <label>Connection from</label>
-                            <input type="text" placeholder="@(withEntryName)'s relationship to @(myEntryName)" @bind=reverse>
+                            <input type="text" placeholder="@(withEntryNameOrUnknown)'s relationship to @(myEntryName)" @bind=reverse>
                         </div>
                         }
                     </div>
@@ -61,6 +61,7 @@
     private string myEntryName;
     private string myEntryGuid;
     private string withEntryName;
+    private string withEntryNameOrUnknown => string.IsNullOrEmpty(withEntryName) ? "?" : withEntryName;
     private List<Article> articles;
 
     private static readonly string OtherConnectionsGroup = "Custom";

@@ -3,6 +3,7 @@
 @inject Notifier notify
 @using Data.Templates
 @using RpgNotes.Desktop.Shared.Layouts
+@using Shared.Input
 @page "/home"
 
 <Navigator>
@@ -76,10 +77,15 @@
 
 <Modal Title="New Article" OnClose=closeCreate Visible=showNewArticleModal>
     <div class="w3-padding">
-        <label>Name</label>
-        <input @bind=createWithName>
-        <label>Content</label>
-        <textarea @bind=createWithDescription></textarea>
+        <div class="w3-margin-bottom">
+            <label>Name</label>
+            <input @bind=createWithName>
+        </div>
+        <div>
+            <label>Content</label>
+            <RpgNotes.Desktop.Shared.Input.EditMarkdown @ref=newArticleEditor AllowEdit=true Getter=@(() => createWithDescription) Setter=@((text) => createWithDescription=text)>
+            </RpgNotes.Desktop.Shared.Input.EditMarkdown>
+        </div>
 
         <div class="w3-padding w3-center">
             <button class="w3-button @(canCreate() ? "ok" : "disable")" @onclick=addArticle>Create</button>
@@ -89,10 +95,15 @@
 
 <Modal Title="New Campaign" OnClose=closeCampaign Visible=showNewCampaignPopup>
     <div class="w3-padding">
-        <label>Name</label>
-        <input @bind=createWithName>
-        <label>Content</label>
-        <textarea @bind=createWithDescription></textarea>
+        <div class="w3-margin-bottom">
+            <label>Name</label>
+            <input @bind=createWithName>
+        </div>
+        <div>
+            <label>Content</label>
+            <RpgNotes.Desktop.Shared.Input.EditMarkdown @ref=newCampaignEditor AllowEdit=true Getter=@(() => createWithDescription) Setter=@((text) => createWithDescription=text)>
+            </RpgNotes.Desktop.Shared.Input.EditMarkdown>
+        </div>
 
         <div class="w3-padding w3-center">
             <button class="w3-button @(canCreate() ? "ok" : "disable")" @onclick=addCampaign>Create</button>
@@ -127,11 +138,15 @@
     private IArticleTemplate selectedTemplate;
     private bool canCreate() => !string.IsNullOrEmpty(createWithName);
 
+    private EditMarkdown newArticleEditor;
+    private EditMarkdown newCampaignEditor;
+
     private void createArticleFromTemplate(IArticleTemplate template) {
         this.selectedTemplate = template;
         this.showNewArticleModal = true;
         this.createWithName = null;
         this.createWithDescription = null;
+        newArticleEditor.Edit();
     }
     private void closeCreate() {
         this.showNewArticleModal = false;
@@ -166,6 +181,7 @@
         showNewCampaignPopup = true;
         this.createWithName = null;
         this.createWithDescription = null;
+        newCampaignEditor.Edit();
     }
     private void closeCampaign() {
         showNewCampaignPopup = false;
