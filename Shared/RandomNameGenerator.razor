@@ -1,0 +1,35 @@
+@using Qkmaxware.Namegen
+
+<div>
+    @foreach (var generator in Generators) {
+        <button class="w3-button" @onclick=@(() => select(generator))>
+            @generator.GetType().Name.Replace("NameGenerator", string.Empty)
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public Action<string> OnGetName {get; set;}
+    private void select(INameGenerator generator) {
+        OnGetName?.Invoke(generator.Next());
+    }
+    private static List<INameGenerator> _generators;
+    private static List<INameGenerator> Generators {
+        get {
+            if (_generators != null) {
+                return _generators;
+            }
+
+            var type = typeof(INameGenerator);
+            // Get all types that implement IArticleTemplate AND have a parameter-less constructor
+            var types = typeof(INameGenerator).Assembly
+                .GetTypes()
+                .Where(p => p != null && type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract && p.GetConstructor(Type.EmptyTypes) != null);
+            // Create instances of all the found types
+            var templates = types.Select(t => (INameGenerator)Activator.CreateInstance(t));
+            _generators = templates.ToList();
+            return _generators;
+        }
+    }
+    
+}

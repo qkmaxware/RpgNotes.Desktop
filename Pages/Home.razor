@@ -79,7 +79,19 @@
     <div class="w3-padding">
         <div class="w3-margin-bottom">
             <label>Name</label>
-            <input @bind=createWithName>
+            <div class="w3-row">
+                <div class="w3-col w3-right" style="width: 54px;">
+                    <button class="w3-button" @onclick=@(() => showRandomNameGenerators = !showRandomNameGenerators)>
+                        <img src="static/images/random.svg" height=24>
+                    </button>
+                </div>
+                <div class="w3-rest">
+                    <input @bind=createWithName>
+                </div>
+            </div>
+            @if (showRandomNameGenerators) {
+            <RandomNameGenerator OnGetName=@((name) => createWithName = name)></RandomNameGenerator>
+            }
         </div>
         <div>
             <label>Content</label>
@@ -127,6 +139,7 @@
             .ToList();
         }
     }    
+    private bool showRandomNameGenerators = false;
 
     private bool showNewArticleModal = false;
     private string _name;

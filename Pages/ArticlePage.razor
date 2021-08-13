@@ -102,14 +102,14 @@
                 </Section>
             </TabPage>
             <TabPage Title="Connections">
+                <div class="w3-padding">
+                    <button class="w3-button w3-block ok" @onclick=openConnectionBuilder>Add Connection</button>
+                </div>
                 @if (cachedConnections != null) {
                     foreach (var conn in cachedConnections) {
                         <ConnectionRenderer Connection=conn OwnerGuid=@this.guid OnDelete=@(() => { cachedConnections.Remove(conn); StateHasChanged(); })></ConnectionRenderer>
                     }
                 }
-                <div class="w3-padding">
-                    <button class="w3-button w3-block ok" @onclick=openConnectionBuilder>Add Connection</button>
-                </div>
             </TabPage>
         </TabPanel>
     </div>
@@ -268,6 +268,8 @@
         this.cachedConnections.Add(connection);
         if (connection.FamilialParent != Participant.None)
             reComputeFamilyTree();
+        if (files != null)
+            files.MarkDirty();
         StateHasChanged();
     }
 

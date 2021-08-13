@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <PackageId>RpgNotes.Desktop</PackageId>
-    <Version>1.0.5</Version>
+    <Version>1.0.6</Version>
     <Authors>Colin Halseth</Authors>
   </PropertyGroup>
   <ItemGroup>
@@ -14,5 +14,6 @@
     <PackageReference Include="ElectronNET.API" Version="13.5.1" />
     <PackageReference Include="MarkdownSharp" Version="2.0.5" />
     <PackageReference Include="Qkmaxware.Blazor.FileExplorer" Version="1.0.4" />
+    <PackageReference Include="Qkmaxware.Namegen" Version="1.0.0" />
   </ItemGroup>
 </Project>
