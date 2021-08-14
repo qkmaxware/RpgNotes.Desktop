@@ -78,6 +78,14 @@
     [Parameter] public bool AllowEdit {get; set;} = false;
     [Parameter] public Func<string> Getter {get; set;}
     [Parameter] public Action<string> Setter {get; set;}
+    [Parameter] public bool SpawnEditable {
+        get => !isDisabled;
+        set {
+            if (AllowEdit) {
+                isDisabled = !value;
+            }
+        }
+    }
 
     private bool isDisabled = true;
     private string text {

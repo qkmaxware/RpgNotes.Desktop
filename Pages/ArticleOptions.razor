@@ -16,7 +16,7 @@
     Settings
 </div>
 <div class="w3-padding">
-    <div class="w3-row">
+    <div class="w3-row" style="padding-bottom:2px;">
         <div class="w3-col m9 w3-padding">
             Visibility indicates who has access to search and browse for articles.
             @if (article.Visibility == Visibility.Public) {
@@ -32,12 +32,42 @@
         </div>
     </div>
     @if (!article.IsCampaign()) {
-    <div class="w3-row">
+    <div class="w3-row" style="padding-bottom:2px;">
         <div class="w3-col m9 w3-padding">
             An article's template dictates what kind of features and metadata the article is capable of having. Changing an article's template type can result loss of information as not all templates have the same features.
         </div>
         <div class="w3-col m3">
             <button class="w3-button w3-block bright" @onclick=requestChangeTemplate>Change Template</button>
+        </div>
+    </div>
+    <div class="w3-row" style="padding-bottom:2px;">
+        <div class="w3-col m9 w3-padding">
+            Aricles can have an associated map on which other articles can be placed using location based connections. 
+        </div>
+        <div class="w3-col m3">
+            <button class="w3-button w3-block @(article.IsMapCapable() ? "error" : "bright")" @onclick=changeMapMode>
+                @if(article.IsMapCapable()) {
+                    <span>Disable</span>
+                } else {
+                    <span>Enable</span>
+                }
+                Map
+            </button>
+        </div>
+    </div>
+    <div class="w3-row" style="padding-bottom:2px;">
+        <div class="w3-col m9 w3-padding">
+            Aricles can have an associated character sheet on which to display gameplay stats. 
+        </div>
+        <div class="w3-col m3">
+            <button class="w3-button w3-block @(article.HasCharacterSheet() ? "error" : "bright")" @onclick=changeCharacterSheetMode>
+                @if(article.HasCharacterSheet()) {
+                    <span>Disable</span>
+                } else {
+                    <span>Enable</span>
+                }
+                Character Sheet
+            </button>
         </div>
     </div>
     }
@@ -76,13 +106,13 @@
 </Modal>
 <Modal Title="Choose Template" Visible=showChangeTemplatePopup OnClose=@(() => { showChangeTemplatePopup=false; StateHasChanged(); })>
     <GridList T=IArticleTemplate LargeLayout=Layout.SixColumns MediumLayout=Layout.FourColumns SmallLayout=Layout.TwoColumns Items=Home.LoadedTemplates>
-            <div class="w3-padding">
-                <div class="w3-border w3-round-large w3-center well" @onclick=@(() => selectChangeTemplate(context))>
-                    <img src="@context.TemplateIcon().GetUrl()" style="width:100%; height:auto;">
-                    @context.TemplateName()
-                </div>
+        <div class="w3-padding">
+            <div class="w3-border w3-round-large w3-center well" @onclick=@(() => selectChangeTemplate(context))>
+                <img src="@context.TemplateIcon().GetUrl()" style="width:100%; height:auto;">
+                @context.TemplateName()
             </div>
-        </GridList>
+        </div>
+    </GridList>
     <div class="w3-padding w3-center">
         @if (changeTemplate != null) {
             <button class="w3-button ok" @onclick=@(() => changeNow())>Change to @changeTemplate.TemplateName()?</button>
@@ -170,7 +200,7 @@
         if (next.Map != null && article.Map != null) {
             next.Map = article.Map; // Preserve
         }
-        if (next.CharacterSheet != null && article.CharacterSheet != null) {
+        if (next.CharacterSheet != null && article.HasCharacterSheet()) {
             next.CharacterSheet = article.CharacterSheet; // Preserve
         }
 
@@ -180,6 +210,27 @@
 
         // Close popup
         showChangeTemplatePopup = false;
+    }
+    #endregion
+
+    #region Features
+    private void changeMapMode() {
+        if (article == null)    
+            return;
+        if (article.IsMapCapable()) {
+            article.Map = null;
+        } else {
+            article.Map = new Map{};
+        }
+    }
+    private void changeCharacterSheetMode() {
+        if (article == null || world == null)    
+            return;
+        if (article.HasCharacterSheet()) {
+            article.CharacterSheet = null;
+        } else {
+            article.CharacterSheet = world.System.CharacterSheetTemplate?.Clone();
+        }
     }
     #endregion
 

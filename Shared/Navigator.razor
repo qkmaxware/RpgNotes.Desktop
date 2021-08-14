@@ -18,6 +18,9 @@
        }
     </span>
     @if (files.HasLoadedSavefile()) {
+    <span class="w3-button w3-bar-item" @onclick=create>
+       Create
+    </span>
     <span class="w3-button w3-bar-item" @onclick=browse>
        Browse
     </span>
@@ -64,6 +67,10 @@
     private void browse() {
         if (files.HasLoadedSavefile())
             nav.Browse();
+    }
+    private void create() {
+        if (files.HasLoadedSavefile())
+            nav.Create();
     }
 
     private bool showSaveDropdown = false;

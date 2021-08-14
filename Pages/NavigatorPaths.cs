@@ -12,6 +12,9 @@ public static class NavigatorPaths {
         nav.NavigateTo("home");
     }
 
+    public static void Create(this NavigationManager nav) {
+        nav.NavigateTo("create");
+    }
     public static void Browse(this NavigationManager nav) {
         nav.NavigateTo("browse");
     }

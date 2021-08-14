@@ -45,6 +45,7 @@ public class Article {
     
     // Character data
     public CharacterSheet CharacterSheet {get; set;}
+    public bool HasCharacterSheet() => CharacterSheet != null;
 
     // Campaign data
     public CampaignData Campaign {get; set;}
