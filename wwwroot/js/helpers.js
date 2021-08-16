@@ -132,10 +132,6 @@ window.RpgNotes = (function(){
                 dragEnd(null);
                 return;
             }
-
-            let invScale = 1.0/zoom;
-            let newMouseX = Math.round((src.clientX - scrollX) * invScale);
-            let newMouseY = Math.round((src.clientY - scrollY) * invScale);
             
             if (cached === null || client === null)
                 return; // Not dragging yet
@@ -149,9 +145,13 @@ window.RpgNotes = (function(){
             cached = null;
         }
         function getMousePosition(clientX, clientY) {
+            var rect = mapdiv.getBoundingClientRect();
+            var x = clientX - rect.left; //x position within the element.
+            var y = clientY - rect.top;  //y position within the element.
+
             let invScale = 1.0/zoom;
-            let newMouseX = Math.round((clientX - scrollX) * invScale);
-            let newMouseY = Math.round((clientY - scrollY) * invScale);
+            let newMouseX = Math.round(x * invScale);
+            let newMouseY = Math.round(y * invScale);
             return {
                 x: newMouseX,
                 y: newMouseY

@@ -31,7 +31,7 @@
     <TabPage Title="Templates">
         <GridList T=IArticleTemplate LargeLayout=Layout.TwelveColumns MediumLayout=Layout.SixColumns SmallLayout=Layout.TwoColumns Items=Home.LoadedTemplates>
             <div class="w3-padding">
-                <div class="w3-border w3-round-large w3-center well" @onclick=@(() => selectChangeTemplate(context))>
+                <div class="w3-border w3-round-large w3-center @(context == this.selectedTemplate ? "error" : "well")" @onclick=@(() => selectChangeTemplate(context))>
                     <img src="@context.TemplateIcon().GetUrl()" style="width:100%; height:auto;">
                     @context.TemplateName()
                 </div>
@@ -150,12 +150,17 @@
     private string createWithName;
     private bool showRandomNameGenerators = false;
     private string createWithDescription;
+    private IArticleTemplate selectedTemplate;
 
     private void selectChangeTemplate(IArticleTemplate template) {
         if (world == null || template == null)
             return;
 
         this.article = template?.Create(world.System);
+        this.selectedTemplate = template;
+    }
+    private void markNoTemplate() {
+        this.selectedTemplate = null;
     }
 
     private void changeMapMode() {
@@ -166,6 +171,7 @@
         } else {
             article.Map = new Map{};
         }
+        markNoTemplate();
     }
     private void changeCharacterSheetMode() {
         if (article == null || world == null)    
@@ -175,14 +181,17 @@
         } else {
             article.CharacterSheet = world.System.CharacterSheetTemplate?.Clone();
         }
+        markNoTemplate();
     }
 
     private void removeDetail() {
         if (article == null)
             return;
 
-        if (article.CustomDetails != null && article.CustomDetails.Count > 0)
+        if (article.CustomDetails != null && article.CustomDetails.Count > 0) {
             article.CustomDetails.RemoveAt(article.CustomDetails.Count - 1);
+            markNoTemplate();
+        }
     }
 
     private void addDetail() {
@@ -194,6 +203,7 @@
         }
 
         article.CustomDetails.Add(new Data.Custom.MetadataField());
+        markNoTemplate();
     }
 
     private void save() {
