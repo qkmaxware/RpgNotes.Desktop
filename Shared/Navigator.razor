@@ -9,6 +9,9 @@
 
 
 <div class="w3-bar well">
+    @if (files.HasLoadedSavefile()) {
+        <History></History>
+    }
     <span class="w3-button w3-bar-item" @onclick=home>
        <img src="static/images/icons/quests.logo.svg" width=20> 
        @if (files.HasLoadedSavefile()) {
@@ -37,7 +40,7 @@
                 </button>
                 <div class="w3-dropdown-click" style="float: none;">
                     <button class="w3-button" style="padding-left:2px; padding-right:2px;" @onclick=@(() => showSaveDropdown = !showSaveDropdown)>&#x25BE;</button>
-                    <div class="w3-dropdown-content w3-bar-block w3-card-4 well @dropdownCss" style="right:0;">
+                    <div class="w3-dropdown-content w3-bar-block w3-card-4 w3-border well @dropdownCss" style="right:0;">
                         <button class="w3-button w3-bar-item well" @onclick=saveAsStart>Save As</button>
                         <button class="w3-button w3-bar-item well" @onclick=saveAndClose>Save and Close</button>
                         <button class="w3-button w3-bar-item well" @onclick=closeWithoutSaving>Close Without Saving</button>

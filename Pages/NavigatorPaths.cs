@@ -1,10 +1,11 @@
+using System;
 using Microsoft.AspNetCore.Components;
 using RpgNotes.Desktop.Data;
 
 namespace RpgNotes.Desktop.Pages {
 
 public static class NavigatorPaths {
-    
+
     public static void Index(this NavigationManager nav) {
         nav.NavigateTo(string.Empty);
     }
@@ -50,7 +51,9 @@ public static class NavigatorPaths {
         Article(nav, article.Guid);
     }
     public static void Article(this NavigationManager nav, string guid) {
-        nav.NavigateTo($"article/{guid}", forceLoad: true);
+        var path = $"article/{guid}";
+        NavigationHistory.PushStatic(new Uri(nav.BaseUri + path));
+        nav.NavigateTo(path, forceLoad: true);
     }
 }
 

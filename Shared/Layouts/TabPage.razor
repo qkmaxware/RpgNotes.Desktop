@@ -6,7 +6,13 @@
 
 @code {
     [CascadingParameter] TabPanel Parent {get; set;}
-    [Parameter] public string Title {get; set;}
+    [Parameter] public Func<string> TitleFunc {get; set;}
+    [Parameter] public string Title {
+        get => TitleFunc?.Invoke() ?? string.Empty;
+        set {
+            TitleFunc = () => value;
+        }
+    }
     [Parameter] public RenderFragment ChildContent {get; set;}
 
     protected override void OnInitialized() {

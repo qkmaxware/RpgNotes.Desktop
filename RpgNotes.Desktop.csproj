@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <PackageId>RpgNotes.Desktop</PackageId>
-    <Version>1.0.7</Version>
+    <Version>1.0.9</Version>
     <Authors>Colin Halseth</Authors>
   </PropertyGroup>
   <ItemGroup>

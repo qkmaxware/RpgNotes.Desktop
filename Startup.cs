@@ -37,6 +37,7 @@ namespace RpgNotes.Desktop
 
             services.AddSingleton<FileManager>();
             services.AddSingleton<Notifier>();
+            services.AddSingleton<NavigationHistory>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

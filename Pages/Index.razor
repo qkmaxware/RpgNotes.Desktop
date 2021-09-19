@@ -113,6 +113,7 @@
         StateHasChanged();
     }
     private void loadSaveFile(string path) {
+        NavigationHistory.Clear();
         if (path != null && File.Exists(path)) {
             showLoadModal = false;
             if (files.Load(path)) {
@@ -146,6 +147,7 @@
     }
     private void createAndLoad() {
         if (canCreateWorld) {
+            NavigationHistory.Clear();
             showNewModal = false;
             var world = new World {
                 Name = createWithName,
