@@ -32,21 +32,4 @@ The following terms are used in the documentation and in the application itself.
 | Campaign | A special kind of article used for indicating groups of player characters and documenting their adventures in the world. A world may have many different ongoing campaigns. |
 
 ## Basic Functionality
-1. Create a world using the new button in the center of the main page.
-   1. Define a name and what RPG system you are using. Use **Other** if your system is not listed.
-2. Create an article by clicking on any of the available templates
-   1. Name the entry and provide a brief description (optional). 
-3. Create a campaign by clicking the '+' button on the home page under **Active Campaigs**
-    1. Name the entry and provide a brief description (optional). 
-4. Use the article browser to find articles 
-5. For any article
-   1. Change description
-   2. Add notes
-   3. Add organizational tags
-   4. Add images
-      1. From public online sources
-      2. Uploaded from a local file
-   5. Create connections to other entries using the **Connections** tab
-      1. Relationships between characters
-      2. Possession of items
-      3. Relative position of locations
+Visit the [Wiki](https://github.com/qkmaxware/RpgNotes.Desktop/wiki) for tutorials, usage examples, and documentation.

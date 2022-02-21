@@ -35,9 +35,7 @@ namespace RpgNotes.Desktop
             services.AddServerSideBlazor();
             services.AddHttpContextAccessor();
 
-            services.AddSingleton<FileManager>();
-            services.AddSingleton<Notifier>();
-            services.AddSingleton<NavigationHistory>();
+            services.AddSingleton<AppData>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -72,6 +70,7 @@ namespace RpgNotes.Desktop
         }
         
         private async void BootstrapElectron() {
+            //var screenDimensions = Electron.Screen.getPrimaryDisplay().workAreaSize;
             var browserWindow = await Electron.WindowManager.CreateWindowAsync(new BrowserWindowOptions {
                 Width = 1152,
                 Height = 940,

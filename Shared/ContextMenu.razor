@@ -1,0 +1,30 @@
+@typeparam T
+
+@if (visible) {
+<div class="base bright-border w3-round w3-border context" style="z-index:2; position: absolute; left: @(x)px; top: @(y)px;" @onmouseleave=Close>
+    @ChildContent(this.value)
+</div>
+}
+
+@code {
+    bool visible;
+    double x;
+    double y;
+
+    private T value;
+
+    [Parameter] public RenderFragment<T> ChildContent {get; set;}
+
+    public void Open(double x, double y, T value) {
+        this.x = x;
+        this.y = y;
+        this.visible = true;
+        this.value = value;
+        StateHasChanged();
+    }
+
+    public void Close() {
+        this.visible = false;
+        StateHasChanged();
+    }
+}

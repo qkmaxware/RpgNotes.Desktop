@@ -1,162 +1,246 @@
-@using RpgNotes.Desktop.Shared.Layouts
+@using System
 @using System.IO
+@using System.Reflection
+@using RpgNotes.Desktop.Shared.Popups
 @inject NavigationManager nav;
-@inject FileManager files;
-@inject Notifier notify;
+@inject AppData app;
 @page "/"
+@page "/index"
 
-<Navigator></Navigator>
-
-<div class="w3-display-container fill">
-    <div class="w3-display-middle">
-        <div class="w3-button w3-round-xlarge w3-center w3-padding w3-margin border solid" @onclick=Load>
-            <img src="static/images/upload.svg" width=64>
-            <hr>
-            Load
+@* 
+    This page handles loading recent vaults, browsing for vaults, creating new vaults, or for getting help.
+    Additionally this should display app version and license information 
+*@
+@if (recent != null && recent.Count > 0) {
+<div id="Recent" class="w3-sidebar hide-sidebar w3-bar-block panel w3-container" style="width: @(RecentSidebarSize);">
+    <h4 class="w3-center">Recent</h4>
+    <ul class="w3-ul no-lines">
+    @foreach (var dir in recent) {
+        <li class="w3-display-container button" @onclick=@(() => confirmLoadVaultDir(dir))>
+            <span class="w3-button w3-display-topright" @onclick:stopPropagation="true" @onclick:preventDefault="true" @onclick=@(() => removeRecent(dir))>&times;</span>
+            <b>@dir.Name</b>
+            <p class="w3-small" style="word-wrap: break-word;">
+                @dir.FullName
+            </p>
+        </li>
+    }
+    </ul>
+</div>
+}
+<div class="w3-main w3-padding" style="margin-left: @(recent != null && recent.Count > 0 ? RecentSidebarSize : "0");">
+    <div id="Header" class="w3-margin-bottom w3-padding">
+        <div class="w3-center">
+            <img src="static/images/icon.png" style="width: 128px; max-width: 25%; height: auto;">
         </div>
-        <div class="w3-button w3-round-xlarge w3-center w3-padding border solid" @onclick=New>
-            <img src="static/images/new.svg" width=64>
-            <hr>
-            New
-        </div>
+        <h3 class="w3-center"><b>@AppName</b></h3>
+        <h4 class="w3-center">version: @AppVersion</h4>
+    </div>
+    <div id="Menu" class="w3-container w3-margin-top" style="margin-left: auto; margin-right: auto; width: 512px; max-width: 100%;">
+        @if (screen == Screen.Default) {
+            <ul class="w3-ul w3-animate-left w3-animate-opacity">
+                <li class="w3-container">
+                    <b>Open World</b>
+                    <p>Choose an existing folder of Markdown files.</p>
+                    <div class="w3-right-align">
+                        <button class="w3-button w3-round panel" style="width: 10em;" @onclick=@(() => screen = Screen.Open)>Open</button>
+                    </div>
+                </li>
+                <li class="w3-container">
+                    <b>Create New World</b>
+                    <p>Create a new folder in which to store notes for your world.</p>
+                    <div class="w3-right-align">
+                        <button class="w3-button w3-round panel" style="width: 10em;" @onclick=@(() => screen = Screen.Create)>Create</button>
+                    </div>
+                </li>
+                <li class="w3-container">
+                    <b>Find Help</b>
+                    <p>Read help documents online.</p>
+                    <div class="w3-right-align">
+                        <button class="w3-button w3-round panel" style="width: 10em;" @onclick=@(() => screen = Screen.Help)>Help</button>
+                    </div>
+                </li>
+            </ul>
+        } else if (screen == Screen.Open) {
+            <ul class="w3-ul w3-animate-right w3-animate-opacity">
+                <li style="padding-left: 0;">
+                    <button class="w3-button" @onclick=@(() => screen = Screen.Default)>&#8612; Back</button>
+                </li>
+                <li>
+                    <b>Browse</b>
+                    <p>
+                        Search your computer for an existing World.
+                    </p>
+                    <div class="w3-right-align">
+                        <button class="w3-button w3-round panel" style="width: 10em;" @onclick=loadVaultDir>Browse</button>
+                    </div>
+                </li>
+                <li>
+                    <b>Recent</b>
+                    <p>
+                        Load a recent World.
+                    </p>
+                    <ul class="w3-ul w3-right-align no-lines">
+                    @foreach (var dir in recent.Take(2)) {
+                        <li class="w3-display-container button" @onclick=@(() => confirmLoadVaultDir(dir))>
+                            <b>@dir.Name</b>
+                            <p class="w3-small" style="word-wrap: break-word;">
+                                @dir.FullName
+                            </p>
+                        </li>
+                    }
+                    </ul>
+                </li>
+            </ul>
+        } else if (screen == Screen.Create) {
+            <ul class="w3-ul w3-animate-right w3-animate-opacity">
+                <li style="padding-left: 0;">
+                    <button class="w3-button" @onclick=@(() => screen = Screen.Default)>&#8612; Back</button>
+                </li>
+                <li>
+                    <b>World Name</b>
+                    <p>
+                        Pick a name for the directory that will hold all Markdown documents.
+                    </p>
+                    <div class="w3-right-align">
+                        <input class="w3-input w3-round" style="width: 50%; min-width: 10em; margin-left: auto;" placeholder="Vault Name" @bind=newVaultName>
+                    </div>
+                </li>
+                <li>
+                    <b>Location</b>
+                    <p>
+                        Pick a name directory to create your notes in.
+                    </p>
+                    <div class="w3-right-align">
+                        @if(newVaultDirectory != null) {
+                            <span class="w3-margin-right">@newVaultDirectory.Name</span>
+                        }
+                        <button class="w3-button w3-round panel" style="width: 10em;" @onclick=browseForNewVaultDir>Browse</button>
+                    </div>
+                    <div class="w3-center w3-margin-top w3-padding">
+                        @if (canCreateVault()) {
+                        <button class="w3-button w3-round ok" style="width: 10em;" @onclick=createVaultDir>Create</button>
+                        }
+                    </div>
+                </li>
+            </ul>
+        } else if (screen == Screen.Help) {
+            <ul class="w3-ul w3-animate-right w3-animate-opacity">
+                <li style="padding-left: 0;">
+                    <button class="w3-button" @onclick=@(() => screen = Screen.Default)>&#8612; Back</button>
+                </li>
+                <li>
+                    <b>Documentation</b>
+                    <p>
+                        Read documentation or follow tutorials online.
+                    </p>
+                    <div class="w3-right-align">
+                        <a href="https://github.com/qkmaxware/RpgNotes.Desktop/wiki" target="_blank" class="w3-button w3-round panel" style="width: 12em;">Online Wiki</a>
+                    </div>
+                </li>
+                <li>
+                    <b>Contribute</b>
+                    <p>
+                        Contribute to making this app even better.
+                    </p>
+                    <div class="w3-right-align">
+                        <a href="https://github.com/qkmaxware/RpgNotes.Desktop" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">View Source</a><br>
+                        <a href="https://github.com/qkmaxware/RpgNotes.Desktop/issues" target="_blank" class="w3-button w3-round panel" style="width: 12em;">Report Issue</a><br>
+                    </div>
+                </li>
+            </ul>
+        } else {
+            <ul class="w3-ul">
+                <li>&#8612; Back</li>
+            </ul>
+        }
     </div>
 </div>
 
-<Modal Title="Load World" OnClose=closeLoad Visible=@showLoadModal>
-    <FileExplorer Load=true OnFileSelected=loadSaveFile OnCancelled=closeLoad Patterns=@FileManager.SaveFileExtension>
-    </FileExplorer>
-</Modal>
-
-<Modal Title="New World" OnClose=closeNew Visible=@showNewModal>
-    <div class="w3-padding">
-        <label>World Name</label>
-        <input @bind=createWithName>
-        <label>System</label>
-        <select @bind=createSelectedSystemAtIndex>
-            @for (var i = 0; i < systems.Count; i++) {
-                <option value=@i>@systems[i]</option>
-            }
-        </select>
-        @if (createSelectedSystem != null) {
-        <div class="w3-row w3-margin-bottom w3-margin-top">
-            <div class="w3-col" style="width: 48px;">
-                <img src=@createSelectedSystem.IconImage.GetUrl() width=48>
-            </div>
-            <div class="w3-rest w3-container">
-                <strong>@createSelectedSystem.Name</strong>
-                <p>
-                    @createSelectedSystem.Description
-                </p>
-                <div class="w3-round-large w3-padding well">
-                    @createSelectedSystem.Publication.Publisher (@(createSelectedSystem.Publication.YearOfPublication))
-                    @if (!string.IsNullOrEmpty(createSelectedSystem.Publication.Url)) {
-                    <br><a target="_blank" href="@createSelectedSystem.Publication.Url">Official Website</a>
-                    }
-                </div>
-            </div>
-        </div>
-        }
-        <div class="w3-padding w3-center">
-            <button class="w3-button @(canCreateWorld ? "ok" : "disable")" @onclick=createAndLoad>Create</button>
-        </div>
-    </div>
-</Modal>
+<FileBrowser @ref=loadDirBrowser ShowFiles=false RequireFile=false OnCancel=cancelLoadVaultDir OnConfirm=confirmLoadVaultDir></FileBrowser>
+<FileBrowser @ref=newDirBrowser ShowFiles=false RequireFile=false OnCancel=cancelBrowseForNewVaultDir OnConfirm=confirmBrowseForNewVaultDir></FileBrowser>
 
 @code {
-    private static List<RpgSystem> systems = null;
+    private static readonly string RecentSidebarSize = "480px";
+    enum Screen {
+        Default, Open, Create, Help
+    }
+
+    private Screen screen = Screen.Default;
+    private List<DirectoryInfo> recent;
+
+    private string AppName;
+    private string AppVersion;
 
     protected override void OnInitialized() {
-        if (files.HasLoadedSavefile()) {
-            nav.Home();
-        }
+        fetchRecents();
 
-        if (systems == null) {
-            systems = RpgSystem
-            .FindRpgSystems()
-            .Concat(RpgSystem.LoadSystemsFromJsonDirectory(files.BonusSystemDataPath))
-            .OrderBy(system => system.Name)
-            .Concat(new List<RpgSystem> {
-                // These 2 are always at the bottom 
-                new RpgSystem {
-                    Name = "Other D6",
-                    Description = "Various other RPG systems whose main dice is the d6",
-                    Publication = new Publication {
-                        Publisher = "Many",
-                        Url = "",
-                    },
-                    ThemeColour = new RGB(255, 255, 255),
-                    IconImage = new Image { WebPath = "static/images/logos/genericd6.svg" },
-                    Flags = new RpgSystemFlags{},
-                },
-                new RpgSystem {
-                    Name = "Other D20",
-                    Description = "Various other RPG systems whose main dice is the d20",
-                    Publication = new Publication {
-                        Publisher = "Many",
-                        Url = "",
-                    },
-                    ThemeColour = new RGB(255, 255, 255),
-                    IconImage = new Image { WebPath = "static/images/logos/generic.svg" },
-                    Flags = new RpgSystemFlags{},
-                }
-            })
-            .ToList();
-        }
+        var assembly = typeof(Program).Assembly;
+        this.AppName = assembly.GetCustomAttributes(typeof(AssemblyTitleAttribute), false).Cast<AssemblyTitleAttribute>().First().Title;
+        this.AppVersion = assembly.GetCustomAttributes(typeof(AssemblyFileVersionAttribute), false).Cast<AssemblyFileVersionAttribute>().First().Version;
     }
 
-    private bool showLoadModal = false;
-    public void Load() {
-        showLoadModal = true;
+    private void fetchRecents() {
+        recent = app.RecentlyOpened.Select(path => new DirectoryInfo(path)).ToList();
     }
-    public void closeLoad() {
-        showLoadModal = false;
+    private void removeRecent(DirectoryInfo dir) {
+        this.recent.Remove(dir);
+        app.RecentlyOpened.Remove(dir.FullName);
+    }
+
+    #region Open
+    private FileBrowser loadDirBrowser;
+    private void loadVaultDir() {
+        loadDirBrowser.SetVisibility(true);
+    }
+    private void confirmLoadVaultDir(DirectoryInfo parent, FileInfo selected){
+        loadDirBrowser.SetVisibility(false);
+        confirmLoadVaultDir(parent);
         StateHasChanged();
     }
-    private void loadSaveFile(string path) {
-        NavigationHistory.Clear();
-        if (path != null && File.Exists(path)) {
-            showLoadModal = false;
-            if (files.Load(path)) {
-                nav.Home();
-            } else {
-                // Error loading
-                notify.Alert($"Failed to load '{path}'");
-                InvokeAsync(StateHasChanged);
-            }
-        }
+    private void cancelLoadVaultDir() {
+        loadDirBrowser.SetVisibility(false);
     }
+    private void confirmLoadVaultDir(DirectoryInfo vault) {
+        if (!this.recent.Contains(vault)) {
+            this.recent.Insert(0, vault);
+            this.app.RecentlyOpened.Insert(0, vault.FullName);
+        }
 
-    private bool showNewModal = false;
-    private int createSelectedSystemAtIndex;
-    private RpgSystem createSelectedSystem => createSelectedSystemAtIndex >= 0 && createSelectedSystemAtIndex < systems.Count ? systems[createSelectedSystemAtIndex] : null;
-    private string _name;
-    private string createWithName {
-        get => _name;
-        set {
-            _name = value;
-            StateHasChanged();
-        }
+        this.nav.NavigateTo($"home/{vault.FullName.EncodeBase64()}");
     }
-    private bool canCreateWorld => createSelectedSystem != null && !string.IsNullOrEmpty(createWithName);
-    public void New() {
-        showNewModal = true;
+    #endregion
+
+    #region Create
+    private string newVaultName;
+    private DirectoryInfo newVaultDirectory;
+    private FileBrowser newDirBrowser;
+    private void browseForNewVaultDir() {
+        newDirBrowser.SetDirectory(this.newVaultDirectory);
+        newDirBrowser.SetVisibility(true);
     }
-    public void closeNew() {
-        showNewModal = false;
+    private void confirmBrowseForNewVaultDir(DirectoryInfo parent, FileInfo selected){
+        this.newVaultDirectory = parent;
+        newDirBrowser.SetVisibility(false);
         StateHasChanged();
     }
-    private void createAndLoad() {
-        if (canCreateWorld) {
-            NavigationHistory.Clear();
-            showNewModal = false;
-            var world = new World {
-                Name = createWithName,
-                CreatedAt = DateTime.Now,
-                System = createSelectedSystem,
-                Articles = new ArticleCollection(),
-            };
-            files.Load(world);
-            nav.Home();
+    private void cancelBrowseForNewVaultDir() {
+        newDirBrowser.SetVisibility(false);
+    }
+    private bool canCreateVault() => newDirBrowser != null && !string.IsNullOrEmpty(newVaultName);
+    private void createVaultDir() {
+        if (canCreateVault()) {
+            var vaultPath = Path.Combine(newVaultDirectory.FullName, newVaultName);
+            var vault = new DirectoryInfo(vaultPath);
+            vault.Create();
+            if (!this.recent.Contains(vault))
+                this.recent.Insert(0, vault);
+
+            this.nav.NavigateTo($"home/{vault.FullName.EncodeBase64()}");
         }
     }
+    #endregion
+
+    #region Help
+
+    #endregion
 }

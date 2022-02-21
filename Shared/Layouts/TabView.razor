@@ -1,0 +1,37 @@
+<div style="height: 100%;">
+    <div style="white-space: nowrap; overflow-x: auto; overflow-y: hidden; height: 38px;">
+        @for (var i = 0; i < this.pages.Count; i++) {
+            var j = i;
+            var tab = this.pages[i];
+            <button class="w3-button @(tab == current ? "header" : string.Empty)" @onclick=@(() => setCurrentPage(tab))>@tab.Title</button>@if(this.CanCloseTabs){<button class="w3-button @(tab == current ? "header" : string.Empty)" @onclick=@(() => { OnTabClosed?.Invoke(j, tab); this.pages.Remove(tab);})>&times;</button>}
+        }
+    </div>
+    <div style="height: calc(100% - 38px);">
+        <CascadingValue Value=this>
+            @ChildContent
+        </CascadingValue>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool CanCloseTabs {get; set;}
+    [Parameter] public Action<int, TabPage> OnTabClosed {get; set;}
+    [Parameter] public RenderFragment ChildContent {get; set;}
+    private List<TabPage> pages = new List<TabPage>();
+    private TabPage current;
+
+    public void RegisterPage(TabPage page) {
+        this.pages.Add(page);
+        if (current == null)
+            setCurrentPage(page);
+        StateHasChanged();
+    }
+
+    public bool IsCurrentPage(TabPage page) {
+        return current == page;
+    }
+
+    private void setCurrentPage(TabPage page) {
+        this.current = page;
+    }
+}

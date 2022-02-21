@@ -1,233 +1,296 @@
-@inject NavigationManager nav
-@inject FileManager files
-@inject Notifier notify
-@using Data.Templates
 @using RpgNotes.Desktop.Shared.Layouts
-@using Shared.Input
+@using RpgNotes.Desktop.Shared.Popups
+@using System.IO
 @page "/home"
+@page "/home/{DirectoryRef}"
 
-<Navigator>
-    @*
-    // IDK if I NEED this yet
-    <button class="w3-button w3-bar-item header">Create</button>
-    <button class="w3-button w3-bar-item">Browse</button>*@
-</Navigator>
+@* 
+    This page handles file browsing, file editing (through iframes to various editors), and changing settings
+*@
 
-<TabPanel>
-    <TabPage Title="Active Campaigns">
-        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto;">
-            <div class="w3-padding" style="display: inline-block;">
-                <div class="w3-button w3-round-large w3-display-container article-preview-container border dashed" style="width: 120px; height: 120px" @onclick=@(() => tryAddCampaign())>
-                    <div class="w3-display-middle">
-                        +
-                    </div>
-                </div>
-            </div>
-            @if (world != null) {
-                foreach (var campaign in world.Articles.EnumerateCampaigns().Where(c => (c["Active"]?.AsBool() ?? false) == true)) {
-                    <div class="w3-padding" style="display: inline-block;">
-                        <div class="w3-border w3-round-large w3-display-container article-preview-container well" style="width: 120px; height: 120px" @onclick=@(() => nav.Article(campaign))>
-                            @if (campaign.ProfileImage() != null) {
-                                <div class="article-preview-img" style="background-image: url(@campaign.ProfileImage().GetUrl())"></div>
-                            }
-                            <div class="w3-display-middle article-preview-label">
-                                @campaign.Name
-                            </div>
-                        </div>
-                    </div>
-                }
-            }
+@* Main Sidebars *@
+<div id="ActivityBar" class="w3-sidebar w3-bar-block header" style="width: 48px;">
+    <button title="Explorer" class="w3-bar-item w3-button w3-large @(tab == Tab.Explorer ? "error" : string.Empty)" style="padding: 8px; text-align: center" @onclick=@(() => tab = Tab.Explorer)>
+        <img src="static/images/folder.svg" style="width: 32px; height: 32px;">
+    </button>
+    <button title="Graph" class="w3-bar-item w3-button w3-large @(tab == Tab.Graph ? "error" : string.Empty)" style="padding: 8px; text-align: center" @onclick=@(() => openGraphView())>
+        <img src="static/images/graph.svg" style="width: 32px; height: 32px;">
+    </button>
+    <button title="Atlas" class="w3-bar-item w3-button w3-large @(tab == Tab.Atlas ? "error" : string.Empty)" style="padding: 8px; text-align: center" @onclick=@(() => tab = Tab.Atlas)>
+        <img src="static/images/map.svg" style="width: 32px; height: 32px;">
+    </button>
+    <button title="Calendar" class="w3-bar-item w3-button w3-large @(tab == Tab.Calendar ? "error" : string.Empty)" style="padding: 8px; text-align: center" @onclick=@(() => tab = Tab.Calendar)>
+        <img src="static/images/calendar.svg" style="width: 32px; height: 32px;">
+    </button>
+    <button title="Collections" class="w3-bar-item w3-button w3-large @(tab == Tab.Collections ? "error" : string.Empty)" style="padding: 8px; text-align: center" @onclick=@(() => tab = Tab.Collections)>
+        <img src="static/images/collections.svg" style="width: 32px; height: 32px;">
+    </button>
+</div>
+<div id="Explorer" class="w3-sidebar w3-bar-block w3-padding panel" style="margin-left: 48px; width:25%; height: 100vh;">
+    @if (tab == Tab.Explorer) {
+        <DirectoryExplorer Directory=@this.Directory OnRightClick=OpenFileContext OnFileDbClick=@((file) => openLeft(file))></DirectoryExplorer>
+    }
+    @if (tab == Tab.Atlas) {
+        <MapExplorer Directory=@this.Directory OnRightClick=OpenMapContext OnFileDbClick=@((file) => openMapLeft(file))></MapExplorer>
+    }
+    @if (tab == Tab.Calendar) {
+        <CalendarExplorer Directory=@this.Directory OnRightClick=OpenCalendarContext OnFileDbClick=OpenCalendar></CalendarExplorer>
+    }
+    @if (tab == Tab.Collections) {
+        <CollectionExplorer Directory=@this.Directory OnFileDbClick=@((article) => openLeft(article.File))></CollectionExplorer>
+    }
+</div>
+@* Secondary Sidebar *@
+<main id="Main" style="height:100vh; margin-left: calc(48px + 25%);" >
+    <div class="w3-row" style="height: 100%;">
+        <div class="w3-col @((rightTabs != null && rightTabs.Tabs > 0) ? "s6" : "s12")" style="height: 100%;">
+            <TabbedPages @ref=leftTabs></TabbedPages>
         </div>
-    </TabPage>
-    <TabPage Title="Finished Campaigns">
-        <div style="display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto;">
-            @if (world != null) {
-                foreach (var campaign in world.Articles.EnumerateCampaigns().Where(c => (c["Active"]?.AsBool() ?? false) != true)) {
-                    <div class="w3-padding" style="display: inline-block;">
-                        <div class="w3-border w3-round-large w3-display-container article-preview-container well" style="width: 120px; height: 120px" @onclick=@(() => nav.Article(campaign))>
-                            @if (campaign.ProfileImage() != null) {
-                                <div class="article-preview-img" style="background-image: url(@campaign.ProfileImage().GetUrl())"></div>
-                            }
-                            <div class="w3-display-middle article-preview-label">
-                                @campaign.Name
-                            </div>
-                        </div>
-                    </div>
-                }
-            }
-        </div>
-    </TabPage>
-</TabPanel>
-
-<TabPanel>
-    <TabPage Title="Create Article">
-        <GridList T=IArticleTemplate LargeLayout=Layout.TwelveColumns MediumLayout=Layout.SixColumns SmallLayout=Layout.TwoColumns Items=templates>
-            <div class="w3-padding">
-                <div class="w3-border w3-round-large w3-center well" @onclick=@(() => createArticleFromTemplate(context))>
-                    <img src="@context.TemplateIcon().GetUrl()" style="width:100%; height:auto;">
-                    @context.TemplateName()
-                </div>
-            </div>
-        </GridList>
-    </TabPage>
-    <TabPage Title="Search Articles">
-        <AdvancedSearch></AdvancedSearch>
-    </TabPage>
-</TabPanel>
-
-<Modal Title="New Article" OnClose=closeCreate Visible=showNewArticleModal>
-    <div class="w3-padding">
-        <div class="w3-margin-bottom">
-            <label>Name</label>
-            <div class="w3-row">
-                <div class="w3-col w3-right" style="width: 54px;">
-                    <button class="w3-button" @onclick=@(() => showRandomNameGenerators = !showRandomNameGenerators)>
-                        <img src="static/images/random.svg" height=24>
-                    </button>
-                </div>
-                <div class="w3-rest">
-                    <input @bind=createWithName>
-                </div>
-            </div>
-            @if (showRandomNameGenerators) {
-            <RandomNameGenerator OnGetName=@((name) => createWithName = name)></RandomNameGenerator>
-            }
-        </div>
-        <div>
-            <label>Content</label>
-            <RpgNotes.Desktop.Shared.Input.EditMarkdown @ref=newArticleEditor AllowEdit=true Getter=@(() => createWithDescription) Setter=@((text) => createWithDescription=text)>
-            </RpgNotes.Desktop.Shared.Input.EditMarkdown>
-        </div>
-
-        <div class="w3-padding w3-center">
-            <button class="w3-button @(canCreate() ? "ok" : "disable")" @onclick=addArticle>Create</button>
+        <div class="w3-col s6 w3-leftbar @((rightTabs != null && rightTabs.Tabs > 0) ? "w3-show" : "w3-hide")" style="height: 100%;">
+            <TabbedPages @ref=rightTabs></TabbedPages>
         </div>
     </div>
-</Modal>
+</main>
 
-<Modal Title="New Campaign" OnClose=closeCampaign Visible=showNewCampaignPopup>
-    <div class="w3-padding">
-        <div class="w3-margin-bottom">
-            <label>Name</label>
-            <input @bind=createWithName>
-        </div>
-        <div>
-            <label>Content</label>
-            <RpgNotes.Desktop.Shared.Input.EditMarkdown @ref=newCampaignEditor AllowEdit=true Getter=@(() => createWithDescription) Setter=@((text) => createWithDescription=text)>
-            </RpgNotes.Desktop.Shared.Input.EditMarkdown>
-        </div>
+<DeletePopup @ref=deletePopup></DeletePopup>
 
-        <div class="w3-padding w3-center">
-            <button class="w3-button @(canCreate() ? "ok" : "disable")" @onclick=addCampaign>Create</button>
-        </div>
-    </div>
-</Modal>
+@* File Explorer *@
+<RenamePopup @ref=rename></RenamePopup>
+<ContextMenu T=FileSystemInfo @ref=fileContext>
+    <ul class="w3-ul">
+        @if (context is FileInfo file) {
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => openLeft(file))>Open</li>
+                <li class="button" @onclick=@(() => openRight(file))>Open to the Side</li>
+            </ul>
+        </li>
+        }
+        @if (context is DirectoryInfo dir) {
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => createFileInDir(dir))>New File</li>
+                <li class="button" @onclick=@(() => createSubdirInDir(dir))>New Folder</li>
+            </ul>
+        </li>
+        }
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => reveal(context))>Reveal in File Explorer</li>
+            </ul>
+        </li>
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button">Copy</li>
+                <li class="button" @onclick=@(() => rename.Rename(context))>Rename</li>
+                <li class="button" @onclick=@(() => delete(context))>Delete</li>
+            </ul>
+        </li>
+    </ul>
+</ContextMenu>
+
+@* Atlas *@
+<ContextMenu T=Map @ref=mapContext>
+    <ul class="w3-ul">
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => openMapLeft(context))>Open</li>
+                <li class="button" @onclick=@(() => openMapRight(context))>Open to the Side</li>
+            </ul>
+        </li>
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => rename.Rename(context.SourceFile))>Rename</li>
+                <li class="button" @onclick=@(() => delete(context.SourceFile))>Delete</li>
+            </ul>
+        </li>
+    </ul>
+</ContextMenu>
+
+@* Calendar *@
+<ContextMenu T=Schedule @ref=calendarContext>
+     <ul class="w3-ul">
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => openScheduleLeft(context))>Open</li>
+                <li class="button" @onclick=@(() => openScheduleRight(context))>Open to the Side</li>
+            </ul>
+        </li>
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => rename.Rename(context.SourceFile))>Rename</li>
+                <li class="button" @onclick=@(() => delete(context.SourceFile))>Delete</li>
+            </ul>
+        </li>
+    </ul>
+</ContextMenu>
 
 @code {
-    private static List<IArticleTemplate> templates = null;
-    public static List<IArticleTemplate> LoadedTemplates => templates == null ? new List<IArticleTemplate>() : new List<IArticleTemplate>(templates);
-    
-    private World world;
+    [Parameter] public string DirectoryRef {get; set;}
+    private string Directory;
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+
+        if (!string.IsNullOrEmpty(DirectoryRef)) {
+            var dir = DirectoryRef.DecodeBase64();
+            if (System.IO.Directory.Exists(dir))
+                this.Directory = dir;
+        }
+    }
+
     protected override void OnInitialized() {
-        world = files.Data();   
-
-        if (templates == null) {
-            templates = Article
-            .FindArticleTemplates()
-            .Concat(Article.LoadArticleTemplatesFromJsonDirectory(files.BonusTemplateDataPath))
-            .OrderBy(template => template.TemplateName())
-            .ToList();
+        if (Directory == null) {
+            Directory = System.Environment.CurrentDirectory;
         }
-    }    
-    private bool showRandomNameGenerators = false;
-
-    private bool showNewArticleModal = false;
-    private string _name;
-    private string createWithName {
-        get => _name;
-        set { _name = value; StateHasChanged(); }
     }
-    private string createWithDescription;
-    private IArticleTemplate selectedTemplate;
-    private bool canCreate() => !string.IsNullOrEmpty(createWithName);
 
-    private EditMarkdown newArticleEditor;
-    private EditMarkdown newCampaignEditor;
-
-    private void createArticleFromTemplate(IArticleTemplate template) {
-        this.selectedTemplate = template;
-        this.showNewArticleModal = true;
-        this.createWithName = null;
-        this.createWithDescription = null;
-        newArticleEditor.Edit();
+    enum Tab {
+        Explorer, Graph, Atlas, Calendar, Collections
     }
-    private void closeCreate() {
-        this.showNewArticleModal = false;
+    private Tab tab;
+
+    #region File Explorer
+    private ContextMenu<FileSystemInfo> fileContext;
+    private RenamePopup rename;
+    public void OpenFileContext(MouseEventArgs args, FileSystemInfo fsObj) {
+        fileContext.Open(args.ClientX, args.ClientY, fsObj);
+    }
+    private void createFileInDir(DirectoryInfo parent) {
+        var baseFilename = "New File.md";
+        var filename = baseFilename;
+        var index = 0;
+        var files = parent.GetFiles().Select(file => file.Name).Concat(parent.GetDirectories().Select(dir => dir.Name)).ToList();
+        while (files.Contains(filename)) {
+            filename = baseFilename + (++index);
+        }
+        var filePath = Path.Combine(parent.FullName, filename);
+        var file = new FileInfo(filePath);
+        using (var writer = new StreamWriter(file.FullName)) {}
+        rename.Rename(file);
+    }
+    private void createSubdirInDir(DirectoryInfo parent) {
+        var baseFilename = "New Folder";
+        var filename = baseFilename;
+        var index = 0;
+        var files = parent.GetFiles().Select(file => file.Name).Concat(parent.GetDirectories().Select(dir => dir.Name)).ToList();
+        while (files.Contains(filename)) {
+            filename = baseFilename + (++index);
+        }
+        var dirPath = Path.Combine(parent.FullName, filename);
+        var dir = new DirectoryInfo(dirPath);
+        dir.Create();
+        rename.Rename(dir);
+    }
+    private void reveal(FileSystemInfo fs) {
+        if (System.Environment.OSVersion.Platform == PlatformID.Win32NT) {
+            System.Diagnostics.Process.Start("explorer.exe", "/select, " + fs.FullName);
+        } else {
+            System.Diagnostics.Process.Start("mimeopen", Path.GetDirectoryName(fs.FullName));
+        }
+    }
+
+
+    private DeletePopup deletePopup;
+    private void delete(FileSystemInfo fs) {
+        if (fs != null)
+            deletePopup?.Delete(Path.GetFileNameWithoutExtension(fs.Name), () => fs.Delete());
+    }
+
+    private TabbedPages leftTabs;
+    private TabbedPages rightTabs;
+
+    private void openLeft(FileInfo file) {
+        this.open(file, this.leftTabs);
+    }
+    private void openRight(FileInfo file) {
+        this.open(file, this.rightTabs);
+    }
+    private void open(FileInfo file, TabbedPages section) {
+        if (file.IsMarkdown()) {
+            section.AddPage(
+                new PageInfo(
+                    home: this.DirectoryRef,
+                    editor: "editors/edit",
+                    path: file.FullName
+                )
+            );
+        }
+        if (file.IsJson()) {
+            section.AddPage(
+                new PageInfo(
+                    home: this.DirectoryRef,
+                    editor: "editors/edit",
+                    path: file.FullName
+                )
+            );
+        }
+        if (file.IsImage()) {
+            section.AddPage(
+                new PageInfo(
+                    home: this.DirectoryRef,
+                    editor: "editors/image",
+                    path: file.FullName
+                )
+            );
+        }
+    }
+    #endregion
+
+    #region Graph
+    private void openGraphView() {
+        this.leftTabs.AddPage(
+            new PageInfo(
+                home: this.DirectoryRef,
+                editor: "editors/graph",
+                path: null,
+                title: Path.GetFileName(this.Directory)
+            )
+        );
+    }
+    #endregion
+
+    #region Atlas
+    private ContextMenu<Map> mapContext;
+    public void OpenMapContext(MouseEventArgs args, Map cal) {
+        mapContext?.Open(args.ClientX, args.ClientY, cal);
+    }
+    private void openMapLeft(Map map) => openMap(map, leftTabs);
+    private void openMapRight(Map map) => openMap(map, rightTabs);
+    private void openMap(Map map, TabbedPages pages) {
+        if(map.SourceFile != null) {
+            pages.AddPage(
+                new PageInfo(
+                    home: this.DirectoryRef,
+                    editor: "editors/map",
+                    path: map.SourceFile.FullName
+                )
+            );
+        }
+    }
+    #endregion
+
+    #region  Calendar
+    private ContextMenu<Schedule> calendarContext;
+    public void OpenCalendarContext(MouseEventArgs args, Schedule cal) {
+        calendarContext?.Open(args.ClientX, args.ClientY, cal);
+    }
+    public void OpenCalendar(Schedule calendar) {
+        openSchedule(calendar, this.leftTabs);
         StateHasChanged();
     }
-    private void addArticle() {
-        if (selectedTemplate == null) {
-            this.showNewArticleModal = false;
-            return;
-        }
-
-        if (!canCreate())
-            return;
-
-        if (world != null) {
-            Article article = selectedTemplate.Create(world.System);
-            article.Name = this.createWithName;
-            article.MarkdownContent = this.createWithDescription;
-
-            world.Articles.Add(article); // populates the Guid
-            createWithName = string.Empty;
-            createWithDescription = string.Empty;
-            nav.Article(article);
-            files.MarkDirty();
-        } else {
-            notify.Alert("You must create a world in order to create an article");
+    private void openScheduleLeft(Schedule s) => openSchedule(s, leftTabs);
+    private void openScheduleRight(Schedule s) => openSchedule(s, rightTabs);
+    private void openSchedule(Schedule calendar, TabbedPages pages) {
+        if(calendar.SourceFile != null) {
+            pages.AddPage(
+                new PageInfo(
+                    home: this.DirectoryRef,
+                    editor: "editors/schedule",
+                    path: calendar.SourceFile.FullName
+                )
+            );
         }
     }
-
-    private bool showNewCampaignPopup = false;
-    public void tryAddCampaign() {
-        showNewCampaignPopup = true;
-        this.createWithName = null;
-        this.createWithDescription = null;
-        newCampaignEditor.Edit();
-    }
-    private void closeCampaign() {
-        showNewCampaignPopup = false;
-        StateHasChanged();
-    }
-    public void addCampaign() {
-        if (world != null) {
-            var article = new Article();
-            article.Campaign = new CampaignData();
-            article.Name = this.createWithName;
-            article.MarkdownContent = this.createWithDescription;
-
-            // Campaign Specific Settings ----------------------
-            article.CustomDetails = new List<Data.Custom.MetadataField>{
-                new Data.Custom.MetadataField {
-                    Name = "Active",
-                    Type = Data.Custom.FieldType.Boolean,
-                    Value = true.ToString()
-                },
-                new Data.Custom.MetadataField {
-                    Name = "Started On",
-                    Type = Data.Custom.FieldType.Date,
-                    Value = DateTime.Now.ToString()
-                },
-            };
-            article.Tags = new List<string> { "campaign" };
-            // -------------------------------------------------
-
-            world.Articles.Add(article);
-            nav.Article(article);
-            files.MarkDirty();
-        } else {
-            notify.Alert("You must create a world in order to create a campaign");
-        }
-    }
+    #endregion
 }

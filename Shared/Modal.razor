@@ -1,0 +1,16 @@
+<div class="w3-modal @(Visible ? "w3-show" : "w3-hide")">
+    <div class="w3-modal-content w3-round-xlarge">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent {get; set;}
+
+    private bool Visible = false;
+
+    public void SetVisibility(bool isVisible) {
+        this.Visible = isVisible;
+        StateHasChanged();
+    }
+}

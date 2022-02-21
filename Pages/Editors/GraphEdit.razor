@@ -1,0 +1,242 @@
+@page "/home/{DirRef}/editors/graph"
+@using System.IO
+@using System.Text.RegularExpressions
+@using RpgNotes.Desktop.Shared.Layouts
+@inject IJSRuntime js;
+
+<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1">
+<div @ref=container style="width: 100vw; height: 100vh; position: relative; overflow: hidden;">
+    <svg @ref=element width="@(svg_width * svg_zoom)" height="@(svg_height * svg_zoom)" style="position: absolute; top: 0; left: 0;" class="graph">
+        @{
+            var i = 0;
+        }
+        @foreach (var edge in dataGraph.Edges) {
+            var startX = svg_x_offset * svg_zoom + edge.StartsAt.Data.Position.X * svg_zoom;
+            var startY = svg_y_offset * svg_zoom + edge.StartsAt.Data.Position.Y * svg_zoom;
+            var endX = svg_x_offset * svg_zoom + edge.GoesTo.Data.Position.X * svg_zoom;
+            var endY = svg_y_offset * svg_zoom + edge.GoesTo.Data.Position.Y * svg_zoom;
+            <path id="edge_@i" d="M@(startX) @(startY) L@(endX) @(endY)" class="link"></path>
+            i++;
+        }
+        @{
+            i = 0;
+        }
+        @foreach (var edge in dataGraph.Edges) {
+            if (edge.Data != null && edge.Data.Relationship != null) {
+                <text>
+                    <text class="label">
+                        <textPath href="#edge_@i" text-anchor="middle" startOffset="50%">
+                            @edge.Data.Relationship
+                        </textPath>
+                    </text>
+                </text>
+            }
+            i++;
+        }
+        @foreach (var node in dataGraph.Nodes) {
+            var startX = svg_x_offset * svg_zoom + node.Data.Position.X * svg_zoom;
+            var startY = svg_y_offset * svg_zoom + node.Data.Position.Y * svg_zoom;
+            <circle cx="@(startX)" cy="@(startY)" r="@node.Data.R" class="article" @onclick=@(() => onClickArticle(node.Data))></circle>
+        }
+        @foreach (var node in dataGraph.Nodes) {
+            var startX = svg_x_offset * svg_zoom + node.Data.Position.X * svg_zoom;
+            var startY = svg_y_offset * svg_zoom + node.Data.Position.Y * svg_zoom;
+            <text>
+                <text x="@(startX)" y="@(startY + node.Data.R + text_buffer)" text-anchor="middle" dominant-baseline="hanging" class="name">@node.Name</text>
+            </text>
+        }
+    </svg>
+</div>
+</div>
+<Header>
+    <button class="w3-button w3-bar-item" @onclick=resetZoom>&#8635;</button>
+    <button class="w3-button w3-bar-item" @onclick=zoomIn>+</button>
+    <button class="w3-button w3-bar-item" @onclick=zoomOut>-</button>
+</Header>
+
+<Sidebar @ref="featureDetailsSidebar" Style="z-index: 2;">
+    <div>
+        <button class="w3-button" @onclick=closeMarkerDetails>&times;</button>
+    </div>
+    <TabView>
+        <TabPage Title=Details>
+            <hr>
+            <div class="w3-padding">
+                <MarkdownRender @ref=articleDetailRenderer></MarkdownRender>
+            </div>
+        </TabPage>
+        <TabPage Title=Marker>
+            <hr>
+            
+        </TabPage>
+    </TabView>
+</Sidebar>
+
+@code {
+    [Parameter] public string DirRef {get; set;}
+    protected DirectoryInfo Directory {get; private set;}
+    public bool Exists => Directory != null && Directory.Exists;
+
+    private static Regex internalLinkRegex = new Regex(@"\[\[(.*?)\]\]");
+
+    private ElementReference container;
+    private ElementReference element;
+
+    protected override void OnParametersSet () {
+        base.OnParametersSet();
+        var file_path = DirRef.DecodeBase64();
+        this.Directory = new DirectoryInfo(file_path);
+
+        if (Exists) {
+            Graph<Circle,Article.Connection> graph = new Graph<Circle, Article.Connection>(); 
+            var articles = Directory.GetMarkdownArticles();
+            var nodes = articles.ToDictionary(article => article.FullName, article => graph.NewNode(Path.GetFileNameWithoutExtension(article.Name), new Circle{ Article=new Article(article) }));
+            foreach (var articleNode in nodes) {
+                var article = articleNode.Key;
+                var node = articleNode.Value;
+                
+                // Fetch all outbound links
+                {
+                    foreach (var connection in node.Data.Article.OutboundConnections()) {
+                        var relative = connection.ArticlePath;
+                        var path = Path.GetFullPath(Path.Combine(this.Directory.FullName, relative));
+                        
+                        // Define edges
+                        if (nodes.ContainsKey(path)) {
+                            graph.AddEdge(node, nodes[path], connection);
+                        }
+                    }
+                }
+            }
+            this.dataGraph = graph;
+            display(this.dataGraph);
+        }
+    }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+
+        this.layout = new SpringLayout {
+            C1= 20.0f,                                  // "Steepness" of the attractive/repulsive force
+            C2= node_max_radius + node_min_distance,    // Where the graph switches to negatives "repulsion" when too close
+            C3= 3*(node_max_radius + node_min_distance),// Strength of "repulsive" force between non-adjacent nodes  
+            C4= 0.2f                                    // Max amount to "move" each iteration
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            await js.InvokeVoidAsync("RpgNotes.Graph.Setup", this.container, this.element);
+        }
+    }
+
+    private class Circle : DisplayedVertex{
+        public double R = 10;
+        public Article Article;
+    }
+    private class Bounds {
+        public double MinX;
+        public double MinY;
+        public double MaxX;
+        public double MaxY;
+
+        public double Width => MaxX - MinX;
+        public double Height => MaxY - MinY;
+    }
+
+    private Graph<Circle,Article.Connection> dataGraph;
+    private Graph<Circle,Article.Connection> displayGraph;
+    private double svg_zoom = 1; // default zoom
+    private void resetZoom() {
+        svg_zoom = 1;
+    }
+    private void zoomIn() {
+        svg_zoom = Math.Min(svg_zoom + 1, 25);
+        // Preserve center
+    }
+    private void zoomOut() {
+        svg_zoom = Math.Max(1, svg_zoom - 1);
+        //Preserve center
+    }
+    private double node_min_radius = 10;
+    private float node_max_radius = 50;
+    private float node_min_distance = 50;
+    private double node_growth_scale = 2;
+    private double text_buffer = 8;
+    private double svg_width = 100;
+    private double svg_x_offset = 0;
+    private double svg_height = 100;
+    private double svg_y_offset = 0;
+    private void display(Graph<Circle,Article.Connection> graphToDisplay) {
+        var bounds = forceDirectedLayout(graphToDisplay);
+        svg_width = bounds.Width + 50;
+        svg_height = bounds.Height + 50;
+        svg_x_offset = -1 * bounds.MinX;
+        svg_y_offset = -1 * bounds.MinY;
+        this.displayGraph = graphToDisplay;
+    }
+
+    private int buffer = 100;
+
+    private GraphLayoutAlgorithm layout;
+
+    private Bounds forceDirectedLayout(Graph<Circle,Article.Connection> data) {
+        // Node radius
+        double maxR = node_min_radius;
+        foreach (var node in data.Nodes) {
+            node.Data.R = Math.Max(node_min_radius, Math.Min(node_max_radius, node_growth_scale * node.Outbound.Count));
+            if (node.Data.R > maxR) {
+                maxR = node.Data.R;
+            }
+        }
+
+        // Layout nodes
+        layout.Arrange(data);
+        
+        // Compute bounds
+        Bounds b = new Bounds();  
+        foreach (var node in data.Nodes) {
+            if (node.Data.Position.X < b.MinX)
+                b.MinX = node.Data.Position.X;
+            if (node.Data.Position.X > b.MaxX) {
+                b.MaxX = node.Data.Position.X;
+            }
+
+            if (node.Data.Position.Y < b.MinY)
+                b.MinY = node.Data.Position.Y;
+            if (node.Data.Position.Y > b.MaxY) {
+                b.MaxY = node.Data.Position.Y;
+            }
+        }
+
+        // Subtract offset for the radius of the largest circle
+        b.MinX -= buffer + maxR;
+        b.MaxX += buffer + maxR;
+        b.MinY -= buffer + maxR;
+        b.MaxY += buffer + maxR;
+
+        return b;
+    }
+
+
+    private Sidebar featureDetailsSidebar;
+    private MarkdownRender articleDetailRenderer;
+    private Circle selectedVertex;
+    private void onClickArticle(Circle circ) {
+        if (circ == null)
+            return;
+
+        if (this.Directory != null && this.Directory.Exists && circ.Article.File.Exists) {
+            articleDetailRenderer?.Render(circ.Article.AutoLinkedContents(this.Directory));
+        } else {
+            articleDetailRenderer?.Render(string.Empty);
+        }
+
+        selectedVertex = circ;
+        featureDetailsSidebar?.SetVisibility(true);
+    }
+    private void closeMarkerDetails() {
+        selectedVertex = null;
+        featureDetailsSidebar?.SetVisibility(false);
+    }
+}

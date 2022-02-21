@@ -1,0 +1,52 @@
+@using System.IO
+
+<Modal @ref=modal>
+    <header class="w3-container">
+        <h3>Rename</h3>
+    </header>
+    <div class="w3-padding">
+        <input type="text" class="w3-input w3-round" @bind=filename>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancel>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <div class="w3-right-align" style="overflow: hidden;">
+                <button class="w3-button w3-round ok" @onclick=confirm>Confirm</button>
+            </div>
+        </div>
+    </footer>
+</Modal>
+
+@code {
+
+    private string filename;
+    private FileSystemInfo fileRef;
+    private Modal modal;
+
+    public void Rename(FileSystemInfo info) {
+        if (info != null) {
+            this.filename = info.Name;
+            this.fileRef = info;
+            this.modal?.SetVisibility(true);
+            StateHasChanged();
+        }
+    }
+
+    private void cancel() {
+        this.modal?.SetVisibility(false);
+    }
+
+    private void confirm() {
+        filename = filename.Trim();
+        if (filename != fileRef.Name) {
+            if (fileRef is FileInfo file) {
+                file.MoveTo(Path.Combine(file.Directory.FullName, filename));
+            } else if (fileRef is DirectoryInfo dir) {
+                dir.MoveTo(Path.Combine(dir.Parent.FullName, filename));
+            }
+            this.modal?.SetVisibility(false);
+        }
+    }
+}

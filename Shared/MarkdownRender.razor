@@ -1,0 +1,18 @@
+<article>
+    @((MarkupString)rendered)
+</article>
+
+@code {
+    private static MarkdownSharp.Markdown md = new MarkdownSharp.Markdown(
+        new MarkdownSharp.MarkdownOptions {
+            
+        }
+    );
+
+    private string rendered;
+
+    public void Render(string markdown) {
+        this.rendered = md.Transform(markdown);
+        StateHasChanged();
+    }
+}

@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <PackageId>RpgNotes.Desktop</PackageId>
-    <Version>1.0.9</Version>
+    <Version>2.0.0</Version>
     <Authors>Colin Halseth</Authors>
   </PropertyGroup>
   <ItemGroup>
@@ -13,7 +13,8 @@
   <ItemGroup>
     <PackageReference Include="ElectronNET.API" Version="13.5.1" />
     <PackageReference Include="MarkdownSharp" Version="2.0.5" />
-    <PackageReference Include="Qkmaxware.Blazor.FileExplorer" Version="1.0.4" />
-    <PackageReference Include="Qkmaxware.Namegen" Version="1.0.0" />
+    <PackageReference Include="YamlDotNet" Version="11.2.1" />
+    <!--<PackageReference Include="Qkmaxware.Blazor.FileExplorer" Version="1.0.4" />-->
+    <!--<PackageReference Include="Qkmaxware.Namegen" Version="1.0.0" />-->
   </ItemGroup>
 </Project>

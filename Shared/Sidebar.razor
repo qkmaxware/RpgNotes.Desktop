@@ -1,0 +1,15 @@
+<div class="@(visible?"w3-show":"w3-hide") w3-sidebar w3-animate-right w3-bar-block w3-border-right header" style="width:50%; right:0;@Style">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent {get; set;}
+    [Parameter] public string Style {get; set;}
+
+    private bool visible = false;
+
+    public void SetVisibility(bool isVisible) {
+        this.visible = isVisible;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,13 @@
+@page "/home/{HomeRef}/editors/image/{FileRef}"
+@inherits EditorBase
+
+<Header></Header>
+<div style="padding-top: 38px; overflow: auto; width: 100vw; height: 100vh">
+    <img draggable="false" src="api/files/getFromReference/@(this.File.FullName.EncodeBase64())">
+</div>
+
+@code {
+    protected override void OnParametersSet () {
+        base.OnParametersSet();
+    }
+}

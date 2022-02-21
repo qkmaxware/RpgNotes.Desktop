@@ -1,0 +1,52 @@
+<div style="height: 100%;">
+    <div style="white-space: nowrap; overflow-x: auto; overflow-y: hidden; height: 38px;">
+        @if (this.pages != null) {
+            for (var i = 0; i < this.pages.Count; i++) {
+                var j = i;
+                var tab = this.pages[i];
+                <button class="w3-button @(tab == Active ? "header" : string.Empty)" @onclick=@(() => setCurrentPage(tab))>@tab.Title</button><button class="w3-button @(tab == Active ? "header" : string.Empty)" @onclick=@(() => RemovePage(tab))>&times;</button>
+            }
+        }
+    </div>
+    <div style="height: calc(100% - 38px);">
+        @if (this.pages != null) {
+            foreach (var tab in this.pages) {
+                <iframe src="@(tab.Url)" class="@(tab == Active ? "w3-show" : "w3-hide")" style="width: 100%; height: 100%; border: none;"></iframe>
+            }
+        }
+    </div>
+</div>
+
+@code {
+
+    private List<PageInfo> pages = new List<PageInfo>();
+    private int selectedPage = -1;
+    public PageInfo Active => selectedPage >= 0 && selectedPage < pages.Count ? pages[selectedPage] : null;
+
+    public int Tabs => pages.Count;
+
+    public void AddPage(PageInfo page) {
+        if (pages == null)
+            pages = new List<PageInfo>();
+                
+        this.pages.Add(page);
+        this.selectedPage = this.pages.Count - 1;
+        StateHasChanged();
+    }
+
+    private void setCurrentPage(PageInfo page) {
+        this.selectedPage = this.pages.IndexOf(page);
+    }
+
+    public void RemovePage(PageInfo page) {
+        if (pages == null)
+            return;
+
+        pages.Remove(page);
+        if (selectedPage >= pages.Count) {
+            selectedPage = pages.Count - 1;
+        }
+        StateHasChanged();
+    }
+
+}

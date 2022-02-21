@@ -1,0 +1,23 @@
+@using System.IO;
+
+@if (File.Exists) {
+<li class="button" @ondblclick=open @oncontextmenu=openContextMenu @oncontextmenu:preventDefault="true">
+    <span>@File.Name</span>
+</li>
+}
+
+@code {
+    [CascadingParameter] public DirectoryExplorer Explorer {get; set;}
+    [Parameter] public FileInfo File {get; set;}
+
+    private void openContextMenu(MouseEventArgs args) {
+        if (args.Button == 2 && Explorer != null) {
+            Explorer.OpenFileContext(args, this.File);
+        }
+    }
+    private void open() {
+        if (Explorer != null) {
+            Explorer.OpenFile(this.File);
+        }
+    }
+}

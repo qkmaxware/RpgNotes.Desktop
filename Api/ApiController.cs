@@ -20,8 +20,15 @@ public class ApiController : Controller {
     }
 
     [HttpGet]
+    [Route("files/getFromReference/{reference}")]
+    public ActionResult DownloadFromReference(string reference) {
+        var path = reference.DecodeBase64();
+        return DownloadFromPath(path);
+    }
+
+    [HttpGet]
     [Route("files/get/{path}")]
-    public ActionResult Download(string path) {
+    public ActionResult DownloadFromPath(string path) {
         path = HttpUtility.UrlDecode(path);
         if (System.IO.File.Exists(path)) {
             var ext = Path.GetExtension(path);
