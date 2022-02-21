@@ -1,0 +1,100 @@
+@using RpgNotes.Desktop.Shared.Layouts
+@inject AppData app
+
+<Modal @ref="modal">
+    <header class="w3-container w3-display-container">
+        <h3>Settings</h3>
+        <button class="w3-display-right w3-button" @onclick=Close>&times;</button>
+    </header>
+    <div class="w3-padding">
+        <TabView>
+            <TabPage Title="General">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    
+                </div>
+            </TabPage>
+            <TabPage Title="History">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    <Section Title="Recent Worlds">
+                        <Setting Title="Clear Recent Worlds">
+                            <Summary>
+                                Clear the recently opened worlds list.
+                            </Summary>
+                            <Control>
+                                <button class="w3-button error" @onclick=@(() => app.RecentlyOpened.Clear())>Clear</button>
+                            </Control>
+                        </Setting>
+                    </Section>
+                </div>
+            </TabPage>
+            <TabPage Title="Plugins">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    <Setting Title="Safe Mode">
+                        <Summary>
+                            Safe mode prevents plugins from being loaded. Reboot required after changing.
+                        </Summary>
+                        <Control>
+                            <button class="w3-button @(app.Config.Value.Extensions.SafeMode ? "disable" : "error")" @onclick=@(() => setSafeMode(false))>&times;</button><button class="w3-button @(app.Config.Value.Extensions.SafeMode ? "ok" : "disable")" @onclick=@(() => setSafeMode(true))>&check;</button>
+                        </Control>
+                    </Setting>
+                    <div class="w3-padding">
+                        <div>
+                            <b>Loaded Plugins</b>
+                        </div>
+                        @if(app.Extensions.Loaded != null && app.Extensions.Loaded.Count() > 0) {
+                        <ul class="w3-ul">
+                            @foreach (var plugin in app.Extensions.Loaded) {
+                                <li>
+                                    <b>@plugin.Value.Name</b> @plugin.Value.Version
+                                    <div>
+                                        @plugin.Value.Description
+                                        <div class="w3-right-align">
+                                            <button class="w3-button w3-small error" @onclick=@(() => { try{ plugin.Key.Delete(); } catch{} })>uninstall</button>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                        } else {
+                            <span>No plugins loaded.</span>
+                        }
+                    </div>
+                </div>
+            </TabPage>
+        </TabView>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6"></div>
+        <div class="w3-col s6"></div>
+    </footer>
+</Modal>
+
+@code {
+    Modal modal;
+
+    public void Open() {
+        this.modal?.SetVisibility(true);
+    }   
+    public void Close() {
+        this.modal?.SetVisibility(false);
+    }
+
+    delegate void RefAction<T>(ref T item);
+
+    private void updateConfig(RefAction<AppConfig> updater) {
+        // Get current config
+        var data = app.Config.Value;
+        // Do update
+        updater(ref data);
+        // Save config
+        app.Config.Value = data;
+    }
+
+    private void setSafeMode(bool isSafe) {
+        updateConfig((ref AppConfig config) => {
+            var exts = config.Extensions;
+            exts.SafeMode = isSafe;
+            config.Extensions = exts;
+        });
+    }
+}

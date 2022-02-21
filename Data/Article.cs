@@ -79,12 +79,37 @@ public class Article {
         }
     }
 
+    private Dictionary<string,object> cachedFm; // Cache front-matter for faster access times (in sequence)
+
     public Dictionary<string, object> FrontMatter() {
+        if (cachedFm != null) {
+            return cachedFm;
+        }
+
         var fm = frontMatterString();
         if (string.IsNullOrEmpty(fm)) {
             return new Dictionary<string, object>();
         } else {
-            return deserializer.Deserialize<Dictionary<string, object>>(fm);
+            cachedFm = deserializer.Deserialize<Dictionary<string, object>>(fm);
+            return cachedFm;
+        }
+    }
+
+    public IEnumerable<string> Tags() {
+        var front = this.FrontMatter();
+        var tags = front.ContainsKey("tags") ? front["tags"] : null;
+        if (tags == null)
+            yield break;
+        if (tags is IEnumerable<object> article_tags) {
+            foreach (var tag in article_tags) {
+                if (tag != null) {
+                    yield return tag.ToString();
+                } else {
+                    continue;
+                }
+            }
+        } else {
+            yield break;
         }
     }
 

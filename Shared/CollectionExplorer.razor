@@ -125,21 +125,12 @@
             var files = dir.GetMarkdownArticles();
             foreach (var file in files) {
                 var article = new Article(file);
-                var front = article.FrontMatter();
-                var tags = front.ContainsKey("tags") ? front["tags"] : null;
-
-                if (tags == null)
-                    continue;
-                if (tags is IEnumerable<object> article_tags) {
-                    foreach (var tag in article_tags) {
-                        var tagString = tag?.ToString();
-                        if (c.Include.Contains(tagString)) {
-                            c.Articles.Add(article);
-                            break;
-                        }
+                var tags = article.Tags().ToList();
+                foreach (var tag in tags) {
+                    if (c.Include.Contains(tag)) {
+                        c.Articles.Add(article);
+                        break;
                     }
-                } else {
-                    continue;
                 }
             }
         }

@@ -25,6 +25,11 @@
     <button title="Collections" class="w3-bar-item w3-button w3-large @(tab == Tab.Collections ? "error" : string.Empty)" style="padding: 8px; text-align: center" @onclick=@(() => tab = Tab.Collections)>
         <img src="static/images/collections.svg" style="width: 32px; height: 32px;">
     </button>
+    <div style="position: absolute; bottom: 0;">
+        <button title="Settings" class="w3-bar-item w3-button w3-large" style="padding: 8px; text-align: center" @onclick=@(() => settingsPopup?.Open())>
+            <img src="static/images/gear.svg" style="width: 32px; height: 32px;">
+        </button>
+    </div>
 </div>
 <div id="Explorer" class="w3-sidebar w3-bar-block w3-padding panel" style="margin-left: 48px; width:25%; height: 100vh;">
     @if (tab == Tab.Explorer) {
@@ -52,10 +57,14 @@
     </div>
 </main>
 
+<AppSettings @ref=settingsPopup></AppSettings>
+
 <DeletePopup @ref=deletePopup></DeletePopup>
 
 @* File Explorer *@
-<RenamePopup @ref=rename></RenamePopup>
+<RenamePopup @ref=rename>
+    <RandomNameGenerator OnGetName=@((name) => rename.Suggest(name + ".md"))></RandomNameGenerator>
+</RenamePopup>
 <ContextMenu T=FileSystemInfo @ref=fileContext>
     <ul class="w3-ul">
         @if (context is FileInfo file) {
@@ -70,6 +79,7 @@
         <li>
             <ul class="w3-ul no-lines">
                 <li class="button" @onclick=@(() => createFileInDir(dir))>New File</li>
+                <li class="button" @onclick=@(() => createFileInDirWithTimestamp(dir))>New Timestamped File</li>
                 <li class="button" @onclick=@(() => createSubdirInDir(dir))>New Folder</li>
             </ul>
         </li>
@@ -145,6 +155,8 @@
         }
     }
 
+    private AppSettings settingsPopup;
+
     enum Tab {
         Explorer, Graph, Atlas, Calendar, Collections
     }
@@ -157,16 +169,34 @@
         fileContext.Open(args.ClientX, args.ClientY, fsObj);
     }
     private void createFileInDir(DirectoryInfo parent) {
-        var baseFilename = "New File.md";
+        var baseFilename = "New File";
         var filename = baseFilename;
         var index = 0;
         var files = parent.GetFiles().Select(file => file.Name).Concat(parent.GetDirectories().Select(dir => dir.Name)).ToList();
-        while (files.Contains(filename)) {
-            filename = baseFilename + (++index);
+        while (files.Contains(filename + ".md")) {
+            filename = baseFilename + " " + (++index);
         }
-        var filePath = Path.Combine(parent.FullName, filename);
+        var filePath = Path.Combine(parent.FullName, filename + ".md");
         var file = new FileInfo(filePath);
         using (var writer = new StreamWriter(file.FullName)) {}
+        rename.Rename(file);
+    }
+    private void createFileInDirWithTimestamp(DirectoryInfo parent) {
+        var now = DateTime.Now;
+        var baseFilename = now.ToString("yyyy-MM-dd H.mm.ss");
+        var filename = baseFilename;
+        var index = 0;
+        var files = parent.GetFiles().Select(file => file.Name).Concat(parent.GetDirectories().Select(dir => dir.Name)).ToList();
+        while (files.Contains(filename + ".md")) {
+            filename = baseFilename + " " + (++index);
+        }
+        var filePath = Path.Combine(parent.FullName, filename + ".md");
+        var file = new FileInfo(filePath);
+        using (var writer = new StreamWriter(file.FullName)) {
+            writer.WriteLine("---");
+            writer.WriteLine("timestamp: " + baseFilename);
+            writer.WriteLine("---");
+        }
         rename.Rename(file);
     }
     private void createSubdirInDir(DirectoryInfo parent) {

@@ -163,8 +163,7 @@
                 Article article = new Article(file);
 
                 // Parse front-matter
-                var front = article.FrontMatter();
-                var tags = front.ContainsKey("tags") ? front["tags"] : null;
+                var tags = article.Tags().ToList();
 
                 // Validate tags
                 if (schedule.TagFilters == null || schedule.TagFilters.Count == 0) {
@@ -176,34 +175,25 @@
                         // Console.WriteLine("    Article has no tags");
                         continue;
                     } 
-                    if (tags is IEnumerable<object> article_tags) {
-                        var foundTagMatch = false;
-                        foreach (var tag in article_tags) {
-                            var tagString = tag?.ToString();
-                            if (tagString == null)
-                                continue;
-                            if (this.schedule.TagFilters.Contains(tagString)) {
-                                foundTagMatch = true;
-                                break;
-                            }
+                    var foundTagMatch = false;
+                    foreach (var tag in tags) {
+                        if (this.schedule.TagFilters.Contains(tag)) {
+                            foundTagMatch = true;
+                            break;
                         }
-                        if (foundTagMatch) {
-                            // Ok it has one of the tags
-                            // Console.WriteLine("    Found an article for this schedule");
-                        } else {
-                            // No tags matched
-                            // Console.WriteLine("    Article did not have any matching tags to schedule");
-                            continue;
-                        }
+                    }
+                    if (foundTagMatch) {
+                        // Ok it has one of the tags
+                        // Console.WriteLine("    Found an article for this schedule");
                     } else {
-                        // Invalid tag list format
-                        // Console.WriteLine("    " + JsonSerializer.Serialize(tags));
-                        // Console.WriteLine("    Tag list isn't a list " + tags.GetType());
+                        // No tags matched
+                        // Console.WriteLine("    Article did not have any matching tags to schedule");
                         continue;
                     }
                 }
 
                 // Find date field
+                var front = article.FrontMatter();
                 if (front.ContainsKey(schedule.ArticleDateFieldName)) {
                     // Has a date field
                     var date_string = front[schedule.ArticleDateFieldName]?.ToString();

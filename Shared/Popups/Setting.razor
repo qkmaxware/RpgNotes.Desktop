@@ -1,0 +1,19 @@
+<div class="w3-padding">
+    <div>
+        <b>@Title</b>
+    </div>
+    <div class="w3-row">
+        <div class="w3-col m9">
+            @Summary
+        </div>
+        <div class="w3-col m3 w3-right-align">
+            @Control
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title {get; set;}
+    [Parameter] public RenderFragment Summary {get; set;}
+    [Parameter] public RenderFragment Control {get; set;}
+}

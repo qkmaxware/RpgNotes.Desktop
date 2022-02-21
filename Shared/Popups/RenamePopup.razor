@@ -6,6 +6,9 @@
     </header>
     <div class="w3-padding">
         <input type="text" class="w3-input w3-round" @bind=filename>
+        <div>
+            @ChildContent
+        </div>
     </div>
     <footer class="w3-row w3-padding">
         <div class="w3-col s6">
@@ -25,6 +28,8 @@
     private FileSystemInfo fileRef;
     private Modal modal;
 
+    [Parameter] public RenderFragment ChildContent {get; set;}
+
     public void Rename(FileSystemInfo info) {
         if (info != null) {
             this.filename = info.Name;
@@ -32,6 +37,11 @@
             this.modal?.SetVisibility(true);
             StateHasChanged();
         }
+    }
+
+    public void Suggest(string filename) {
+        this.filename = filename;
+        StateHasChanged();
     }
 
     private void cancel() {
@@ -46,6 +56,8 @@
             } else if (fileRef is DirectoryInfo dir) {
                 dir.MoveTo(Path.Combine(dir.Parent.FullName, filename));
             }
+            this.modal?.SetVisibility(false);
+        } else {
             this.modal?.SetVisibility(false);
         }
     }

@@ -18,34 +18,39 @@ public class ExtensionHost {
         this.MarkdownPreprocessors.Add(preprocessor);
     }
 
+    public Dictionary<FileInfo, IExtension> Loaded = null;
+
     internal bool TryLoadPlugins() {
         try {
-            var plugins = new List<IExtension>();
+            var plugins = new Dictionary<FileInfo, IExtension>();
 
             // Load DLLs from extension directories
-            List<Assembly> loadedAssemblies = new List<Assembly>();
+            Dictionary<FileInfo, Assembly> loadedAssemblies = new Dictionary<FileInfo, Assembly>();
             foreach (var dir in extensionDirectories) {
                 if (!dir.Exists)
                     continue;
 
                 var files = dir.GetFiles().Where(file => file.Extension == ".dll");
                 foreach (var file in files) {
-                    loadedAssemblies.Add(Assembly.LoadFile(file.FullName));
+                    loadedAssemblies.Add(file, Assembly.LoadFile(file.FullName));
                 }
             }
 
             // Create instances of the plugins
             var interfaceType = typeof(IExtension);
-            var types = loadedAssemblies
-                .SelectMany(a => a.GetTypes())
-                .Where(p => interfaceType.IsAssignableFrom(p) && p.IsClass);
-            foreach (var type in types) {
-                var plugin = ((IExtension)System.Activator.CreateInstance(type));
-                plugins.Add(plugin);
-                plugin.Install(this);
+            foreach (var entry in loadedAssemblies) {
+                var file = entry.Key;
+                var assembly = entry.Value;
+                var types = assembly.GetTypes().Where(p => interfaceType.IsAssignableFrom(p) && p.IsClass);
+                foreach (var type in types) {
+                    var plugin = ((IExtension)System.Activator.CreateInstance(type));
+                    plugins.Add(file, plugin);
+                    plugin.Install(this);
+                }
             }
 
             // Plugins loaded
+            this.Loaded = plugins;
             return true;
         } catch  {
             return false;

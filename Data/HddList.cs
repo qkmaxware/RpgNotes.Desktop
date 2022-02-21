@@ -10,7 +10,7 @@ namespace RpgNotes.Desktop.Data {
 /// A list that is backed up by a file on the hard drive
 /// </summary>
 /// <typeparam name="T">stored type of object</typeparam>
-public class HddList<T> : IList<T> {
+public class HddList<T> : IList<T>, IFileBackedData {
 
     private List<T> cached;
 

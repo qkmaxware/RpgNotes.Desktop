@@ -11,6 +11,7 @@ public class AppData {
     public string AppExtensionDirectory;
     public ExtensionHost Extensions; 
     public HddList<string> RecentlyOpened;
+    public HddValue<AppConfig> Config;
 
     public AppData () {
         this.AppDataDirectory = Path.Combine(
@@ -26,9 +27,21 @@ public class AppData {
         Directory.CreateDirectory(this.AppExtensionDirectory);
 
         this.RecentlyOpened = new HddList<string>(Path.Combine(this.AppDataDirectory, "recent.json"));
+        this.Config = new HddValue<AppConfig>(Path.Combine(this.AppDataDirectory, "config.json"));
         this.Extensions = new ExtensionHost(new DirectoryInfo(this.AppExtensionDirectory));
+        if(!this.Config.Value.Extensions.SafeMode) {
+            this.Extensions.TryLoadPlugins(); // If not in safe mode, load plugins
+        }
     }
 
+}
+
+public struct AppExtensionConfig {
+    public bool SafeMode {get; set;}
+}
+
+public struct AppConfig {
+    public AppExtensionConfig Extensions {get; set;}
 }
 
 }
