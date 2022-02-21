@@ -22,6 +22,10 @@
     stroke-width: 2px;
 }
 
+.graph .arrow {
+    fill: var(--theme-highlight-error);
+}
+
 .graph .article {
     cursor: pointer;
     stroke: var(--theme-lighlight-bright);

@@ -7,6 +7,11 @@
 <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1">
 <div @ref=container style="width: 100vw; height: 100vh; position: relative; overflow: hidden;">
     <svg @ref=element width="@(svg_width * svg_zoom)" height="@(svg_height * svg_zoom)" style="position: absolute; top: 0; left: 0;" class="graph">
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" class="arrow">
+                <polygon points="0 0, 10 3.5, 0 7" />
+            </marker>
+        </defs>
         @{
             var i = 0;
         }
@@ -15,7 +20,10 @@
             var startY = svg_y_offset * svg_zoom + edge.StartsAt.Data.Position.Y * svg_zoom;
             var endX = svg_x_offset * svg_zoom + edge.GoesTo.Data.Position.X * svg_zoom;
             var endY = svg_y_offset * svg_zoom + edge.GoesTo.Data.Position.Y * svg_zoom;
-            <path id="edge_@i" d="M@(startX) @(startY) L@(endX) @(endY)" class="link"></path>
+            var offset_r = edge.GoesTo.Data.R;
+            var xDir = Math.Sign(endX - startX);
+            var yDir = Math.Sign(endY - startY);
+            <path id="edge_@i" d="M@(startX) @(startY) L@(endX - xDir*offset_r) @(endY - yDir*offset_r)" marker-end="url(#arrowhead)" class="link"></path>
             i++;
         }
         @{
