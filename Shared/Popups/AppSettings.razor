@@ -1,4 +1,6 @@
 @using RpgNotes.Desktop.Shared.Layouts
+@using System.Text.RegularExpressions
+@using System.Reflection
 @inject AppData app
 
 <Modal @ref="modal">
@@ -102,10 +104,19 @@
                     <Section Title="Updates">
                         <Setting Title="Check for updates">
                             <Summary>
-                            Check online for newer version of RpgNotes.Desktop.
+                            <table>
+                                <tr>
+                                    <td>Current Version</td><td>@current_version</td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(latest_version)) {
+                                <tr>
+                                    <td>Latest Version</td><td>@latest_version @if(needs_updating){<a href="https://github.com/qkmaxware/RpgNotes.Desktop/releases" target="_blank" class="w3-button w3-margin-left w3-small w3-round-xlarge error" style="padding: 4px 8px;">update</a>}</td>
+                                </tr>
+                                }
+                            </table>
                             </Summary>
                             <Control>
-                            <button class="w3-button ok w3-round" style="width: 12em;">Check Now</button>
+                            <button class="w3-button ok w3-round" style="width: 12em;" @onclick=checkVersion>Check Now</button>
                             </Control>
                         </Setting>
                     </Section>
@@ -218,10 +229,10 @@
         );
         using (var writer = new System.IO.StreamWriter(fs.FullName)) {
             writer.Write(
-@"body {
+@":root {
     --theme-font-colour:        white;
     --theme-base:               #525252;
-    --theme-lighlight-bright:   #7e7e7e;
+    --theme-highlight-bright:   #7e7e7e;
     --theme-highlight-error:    #ca3e47;
     --theme-highlight-ok:       #317531;
     --theme-panel:              #414141;
@@ -231,6 +242,34 @@
 );
         }
         fs.ShowInExplorer();
+    }
+    #endregion
+
+    #region About
+    private string current_version = typeof(AppSettings).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    private string latest_version = null;
+    private bool needs_updating = false;
+    private Regex regex = new Regex("\"tag_name\":\\s*\\\"([^\"]*)\\\"");
+    private async void checkVersion() {
+        latest_version = null;
+        needs_updating = false;
+
+        var owner = "qkmaxware";
+        var repo = "RpgNotes.Desktop";
+        var url = $"https://api.github.com/repos/{owner}/{repo}/releases";
+
+        try {
+            using (var client = new HttpClient()) {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible;)");
+                var result = await client.GetStringAsync(url);
+                latest_version = regex.Matches(result).Select((match) => match.Groups[1].Value).OrderBy(tag => tag).FirstOrDefault();
+                var compare = StringComparer.OrdinalIgnoreCase.Compare(current_version, latest_version);
+                needs_updating = compare < 0;
+            }
+        } catch (Exception e) {
+            Console.WriteLine(e);
+        }
+        StateHasChanged();
     }
     #endregion
 

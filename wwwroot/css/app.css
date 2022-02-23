@@ -1,20 +1,9 @@
-:root {
-    --theme-font-colour: white;
-    --theme-base: #525252;
-    --theme-lighlight-bright: #7e7e7e;
-    --theme-highlight-error: #ca3e47;
-    --theme-highlight-ok: #317531;
-    --theme-panel: #414141;
-    --theme-disabled: #313131;
-    --theme-header: #1a1a1a;
-}
-
 .button {
     user-select: none;
 }
 
 .button:hover {
-    background-color: var(--theme-lighlight-bright);
+    background-color: var(--theme-highlight-bright);
 }
 
 .graph .link {
@@ -28,7 +17,7 @@
 
 .graph .article {
     cursor: pointer;
-    stroke: var(--theme-lighlight-bright);
+    stroke: var(--theme-highlight-bright);
     stroke-width: 2px;
     fill: var(--theme-panel)
 }
@@ -47,11 +36,11 @@
 }
 
 .draw .point {
-    fill: var(--theme-lighlight-bright);
+    fill: var(--theme-highlight-bright);
 }
 
 .draw .line {
-    stroke: var(--theme-lighlight-bright);
+    stroke: var(--theme-highlight-bright);
     stroke-width: 4px;
 }
 
@@ -237,10 +226,10 @@ blockquote::before {
 }
 
 .bright {
-    background-color: var(--theme-lighlight-bright);
+    background-color: var(--theme-highlight-bright);
 }
 .bright-border {
-    border-color: var(--theme-lighlight-bright);
+    border-color: var(--theme-highlight-bright);
 }
 
 .disable {

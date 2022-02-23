@@ -1,0 +1,10 @@
+:root {
+    --theme-font-colour:        white;
+    --theme-base:               #525252;
+    --theme-highlight-bright:   #7e7e7e;
+    --theme-highlight-error:    #ca3e47;
+    --theme-highlight-ok:       #317531;
+    --theme-panel:              #414141;
+    --theme-disabled:           #313131;
+    --theme-header:             #1a1a1a;
+}
