@@ -16,14 +16,19 @@
             var i = 0;
         }
         @foreach (var edge in dataGraph.Edges) {
-            var startX = svg_x_offset * svg_zoom + edge.StartsAt.Data.Position.X * svg_zoom;
-            var startY = svg_y_offset * svg_zoom + edge.StartsAt.Data.Position.Y * svg_zoom;
-            var endX = svg_x_offset * svg_zoom + edge.GoesTo.Data.Position.X * svg_zoom;
-            var endY = svg_y_offset * svg_zoom + edge.GoesTo.Data.Position.Y * svg_zoom;
-            var offset_r = edge.GoesTo.Data.R;
-            var xDir = Math.Sign(endX - startX);
-            var yDir = Math.Sign(endY - startY);
-            <path id="edge_@i" d="M@(startX) @(startY) L@(endX - xDir*offset_r) @(endY - yDir*offset_r)" marker-end="url(#arrowhead)" class="link"></path>
+            var start               = edge.StartsAt.Data.Position;
+            var direction           = edge.GoesTo.Data.Position - start;
+            var length              = direction.Length();
+            var offset_r            = edge.GoesTo.Data.R;
+            var dirWithoutOffset    = (direction/length) * (MathF.Max(length - offset_r/svg_zoom, 0));
+            var end                 = start + dirWithoutOffset;
+
+            var startX  = svg_x_offset * svg_zoom + start.X * svg_zoom;
+            var startY  = svg_y_offset * svg_zoom + start.Y * svg_zoom;
+            var endX    = svg_x_offset * svg_zoom + end.X   * svg_zoom;
+            var endY    = svg_y_offset * svg_zoom + end.Y   * svg_zoom;
+        
+            <path id="edge_@i" d="M@(startX) @(startY) L@(endX) @(endY)" marker-end="url(#arrowhead)" class="link"></path>
             i++;
         }
         @{
@@ -44,7 +49,7 @@
         @foreach (var node in dataGraph.Nodes) {
             var startX = svg_x_offset * svg_zoom + node.Data.Position.X * svg_zoom;
             var startY = svg_y_offset * svg_zoom + node.Data.Position.Y * svg_zoom;
-            <circle cx="@(startX)" cy="@(startY)" r="@node.Data.R" class="article" @onclick=@(() => onClickArticle(node.Data))></circle>
+            <circle cx="@(startX)" cy="@(startY)" r="@(node.Data.R)" class="article" style="fill: @node.Data.Colour" @onclick=@(() => onClickArticle(node.Data))></circle>
         }
         @foreach (var node in dataGraph.Nodes) {
             var startX = svg_x_offset * svg_zoom + node.Data.Position.X * svg_zoom;
@@ -61,6 +66,37 @@
     <button class="w3-button w3-bar-item" @onclick=zoomIn>+</button>
     <button class="w3-button w3-bar-item" @onclick=zoomOut>-</button>
 </Header>
+
+<div style="position: fixed; top: 48px; left: 12px;" class="panel w3-round-xlarge">
+    <ul class="w3-ul no-lines">
+        <li>
+            <div class="button tree-caret @(groupsExpanded ? "tree-caret-expanded" : string.Empty)" @onclick=@(() => groupsExpanded = !groupsExpanded)>Groups</div>
+            @if(groupsExpanded) {
+            <div>
+                <ol class="no-lines">
+                @foreach (var group in this.Groups) {
+                    <li>
+                        <div class="w3-row">
+                            <div class="w3-col w3-right" style="width: 64px">
+                                <input type="color" class="w3-input" style="height: 39px;" @bind=group.Colour>
+                            </div>
+                            <div class="w3-rest">
+                                <input class="w3-input" @bind=group.Title placeholder="group title">
+                            </div>
+                        </div>
+                        <label>Filter Expression</label>
+                        <input title="@group.CompilationErrorMessage" class="w3-input border solid @(group.CompiledFromString ? "ok-border" : "error-border")" @bind=group.FilterString>
+                    </li>
+                }
+                </ol>
+                <div class="w3-right-align">
+                    <button class="w3-button" @onclick=@(() => this.Groups.Add(new NodeGroup()))>Add +</button>
+                </div>
+            </div>
+            }
+        </li>
+    </ul>
+</div>
 
 <Sidebar @ref="featureDetailsSidebar" Style="z-index: 2;">
     <div>
@@ -135,11 +171,33 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             await js.InvokeVoidAsync("RpgNotes.Graph.Setup", this.container, this.element);
+        } 
+        // Always do this
+        {   
+            // Redo the group
+            if (this.dataGraph != null && this.Groups != null && this.Groups.Count > 0) {
+                foreach (var node in dataGraph.Nodes) {
+                    node.Data.Colour = "initial";
+                    foreach (var group in this.Groups) {
+                        if (group.IsMatch(node.Data.Article)) {
+                            // Node exists in this group
+                            node.Data.Colour = group.Colour;
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
-    private class Circle : DisplayedVertex{
-        public double R = 10;
+    #region Groups Selection
+    private bool groupsExpanded = false;
+    private List<NodeGroup> Groups = new List<NodeGroup>();
+    #endregion
+
+    private class Circle : DisplayedVertex {
+        public float R = 10;
+        public string Colour = "initial";
         public Article Article;
     }
     private class Bounds {
@@ -154,22 +212,22 @@
 
     private Graph<Circle,Article.Connection> dataGraph;
     private Graph<Circle,Article.Connection> displayGraph;
-    private double svg_zoom = 1; // default zoom
+    private float svg_zoom = 1; // default zoom
     private void resetZoom() {
         svg_zoom = 1;
     }
     private void zoomIn() {
-        svg_zoom = Math.Min(svg_zoom + 1, 25);
+        svg_zoom = MathF.Min(svg_zoom + 1, 25);
         // Preserve center
     }
     private void zoomOut() {
-        svg_zoom = Math.Max(1, svg_zoom - 1);
+        svg_zoom = MathF.Max(1, svg_zoom - 1);
         //Preserve center
     }
-    private double node_min_radius = 10;
+    private float node_min_radius = 10;
     private float node_max_radius = 50;
     private float node_min_distance = 50;
-    private double node_growth_scale = 2;
+    private float node_growth_scale = 2;
     private double text_buffer = 8;
     private double svg_width = 100;
     private double svg_x_offset = 0;
@@ -192,7 +250,7 @@
         // Node radius
         double maxR = node_min_radius;
         foreach (var node in data.Nodes) {
-            node.Data.R = Math.Max(node_min_radius, Math.Min(node_max_radius, node_growth_scale * node.Outbound.Count));
+            node.Data.R = MathF.Max(node_min_radius, Math.Min(node_max_radius, node_growth_scale * node.Outbound.Count));
             if (node.Data.R > maxR) {
                 maxR = node.Data.R;
             }

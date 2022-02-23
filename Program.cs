@@ -8,12 +8,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ElectronNET.API;
 
-namespace RpgNotes.Desktop
-{
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
+namespace RpgNotes.Desktop {
+    public class Program {
+        public static void Main(string[] args) {
             CreateHostBuilder(args).Build().Run();
         }
 

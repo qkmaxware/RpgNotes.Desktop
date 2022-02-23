@@ -8,9 +8,40 @@
     </header>
     <div class="w3-padding">
         <TabView>
-            <TabPage Title="General">
+            <TabPage Title="Editor">
                 <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
                     
+                </div>
+            </TabPage>
+            <TabPage Title="Files">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    
+                </div>
+            </TabPage>
+            <TabPage Title="Appearance">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    <Setting Title="Theme">
+                        <Summary>
+                            Themes change the overall appearance of the app.
+                        </Summary>
+                        <Control>
+                            <select class="w3-input" @bind=themePath>
+                                <option value="null">default</option>
+                                @foreach (var path in app.FetchThemes()) {
+                                <option value="@path.FullName">@System.IO.Path.GetFileNameWithoutExtension(path.Name)</option>
+                                }
+                            </select>
+                            <button class="w3-button w3-round panel w3-margin-top" style="width: 100%;" @onclick=createTheme>Create Theme</button>
+                        </Control>
+                    </Setting>
+                    <Setting Title="Custom CSS">
+                        <Summary>       
+                            Custom CSS to overload specific element styling.
+                        </Summary>
+                        <Control>
+                            <textarea class="w3-input panel" style="resize: vertical; min-height: 240px;" @bind=customCss></textarea>
+                        </Control>
+                    </Setting>
                 </div>
             </TabPage>
             <TabPage Title="History">
@@ -25,6 +56,11 @@
                             </Control>
                         </Setting>
                     </Section>
+                </div>
+            </TabPage>
+            <TabPage Title="Hotkeys">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    
                 </div>
             </TabPage>
             <TabPage Title="Plugins">
@@ -61,6 +97,77 @@
                     </div>
                 </div>
             </TabPage>
+            <TabPage Title="About">
+                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                    <Section Title="Updates">
+                        <Setting Title="Check for updates">
+                            <Summary>
+                            Check online for newer version of RpgNotes.Desktop.
+                            </Summary>
+                            <Control>
+                            <button class="w3-button ok w3-round" style="width: 12em;">Check Now</button>
+                            </Control>
+                        </Setting>
+                    </Section>
+                    <Section Title="Help">
+                        <Setting Title="Documentation">
+                            <Summary>
+                            Read documentation or follow tutorials online.
+                            </Summary>
+                            <Control>
+                            <a href="https://github.com/qkmaxware/RpgNotes.Desktop/wiki" target="_blank" class="w3-button panel w3-round" style="width: 12em;">Online Wiki</a>
+                            </Control>
+                        </Setting>
+                        <Setting Title="Contribute">
+                            <Summary>
+                            Contribute to making this app even better.
+                            </Summary>
+                            <Control>
+                            <a href="https://github.com/qkmaxware/RpgNotes.Desktop" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">View Source</a><br>
+                            <a href="https://github.com/qkmaxware/RpgNotes.Desktop/issues" target="_blank" class="w3-button w3-round panel" style="width: 12em;">Report Issue</a><br>
+                            </Control>
+                        </Setting>
+                    </Section>
+                    <Section Title="Libraries & Licenses">
+                        <Setting Title="ElectronNET">
+                            <Summary>
+                                version 13.5.1
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/ElectronNET/Electron.NET" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                                <a href="https://github.com/ElectronNET/Electron.NET/blob/master/LICENSE" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">License</a><br>
+                            </Control>
+                        </Setting>
+                        <Setting Title="MarkdownSharp">
+                            <Summary>
+                                version 2.0.5
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/StackExchange/MarkdownSharp" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                                <a href="https://github.com/StackExchange/MarkdownSharp/blob/master/LICENSE" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">License</a><br>
+                            </Control>
+                        </Setting>
+                        <Setting Title="YamlDotNet">
+                            <Summary>
+                                version 11.2.1
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/aaubry/YamlDotNet" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                                <a href="https://github.com/aaubry/YamlDotNet/blob/master/LICENSE.txt" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">License</a><br>
+                            </Control>
+                        </Setting>
+                        <Setting Title="Qkmaxware.Namegen">
+                            <Summary>
+                                version 1.0.0
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/qkmaxware/RandomNameGenerators" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                                <a href="https://github.com/qkmaxware/RandomNameGenerators/blob/root/LICENSE.md" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">License</a><br>
+                            </Control>
+                        </Setting>
+                    </Section>
+                </div>
+            </TabPage>
         </TabView>
     </div>
     <footer class="w3-row w3-padding">
@@ -80,6 +187,52 @@
     }
 
     delegate void RefAction<T>(ref T item);
+
+    #region Appearance 
+    private string themePath {
+        get => app.Config.Value.Appearance.ThemeCssPath;
+        set {
+            if (value == "null")
+                value = null;
+
+            updateConfig((ref AppConfig config) => {
+                var appearance = config.Appearance;
+                appearance.ThemeCssPath = value;
+                config.Appearance = appearance;
+            });
+        }
+    }
+    private string customCss {
+        get => app.Config.Value.Appearance.CustomCss;
+        set {
+            updateConfig((ref AppConfig config) => {
+                var appearance = config.Appearance;
+                appearance.CustomCss = value;
+                config.Appearance = appearance;
+            });
+        }
+    }
+    private void createTheme() {
+        var fs = new System.IO.FileInfo(
+            System.IO.Path.Combine(app.AppThemeDirectory, "New Theme " + DateTime.Now.ToString("yyyy-MM-dd") + ".css")
+        );
+        using (var writer = new System.IO.StreamWriter(fs.FullName)) {
+            writer.Write(
+@"body {
+    --theme-font-colour:        white;
+    --theme-base:               #525252;
+    --theme-lighlight-bright:   #7e7e7e;
+    --theme-highlight-error:    #ca3e47;
+    --theme-highlight-ok:       #317531;
+    --theme-panel:              #414141;
+    --theme-disabled:           #313131;
+    --theme-header:             #1a1a1a;
+}"
+);
+        }
+        fs.ShowInExplorer();
+    }
+    #endregion
 
     private void updateConfig(RefAction<AppConfig> updater) {
         // Get current config

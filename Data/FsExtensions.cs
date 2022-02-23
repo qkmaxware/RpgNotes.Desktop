@@ -65,6 +65,14 @@ public static class FsExtensions {
     public static IEnumerable<FileInfo> GetJsonAssets(this DirectoryInfo directory) {
         return directory.EnumerateFiles("*.*", SearchOption.AllDirectories).Where(file => file.IsJson());
     }
+
+    public static void ShowInExplorer(this FileInfo file) {
+        if (System.Environment.OSVersion.Platform == PlatformID.Win32NT) {
+            System.Diagnostics.Process.Start("explorer.exe", "/select, " + file.FullName);
+        } else {
+            System.Diagnostics.Process.Start("mimeopen", Path.GetDirectoryName(file.FullName));
+        }
+    }
 }
 
 }
