@@ -12,17 +12,17 @@
     <div class="w3-padding">
         <TabView>
             <TabPage Title="Editor">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     
                 </div>
             </TabPage>
             <TabPage Title="Files">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     
                 </div>
             </TabPage>
             <TabPage Title="Appearance">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     <Setting Title="Theme">
                         <Summary>
                             Themes change the overall appearance of the app.
@@ -49,7 +49,7 @@
                 </div>
             </TabPage>
             <TabPage Title="History">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     <Section Title="Recent Worlds">
                         <Setting Title="Clear Recent Worlds">
                             <Summary>
@@ -63,13 +63,16 @@
                 </div>
             </TabPage>
             <TabPage Title="Hotkeys">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     <Section Title="Editor">
                         @foreach (var hotkey in app.Config.Value.Hotkeys.Editor.GetType().GetProperties()) {
-                            <Setting Title=@hotkey.Name>
-                                <Summary>&nbsp;</Summary>
+                            <Setting>
+                                <Summary>@Regex.Replace(hotkey.Name, "[A-Z]", " $0")</Summary>
                                 <Control>
-                                    @hotkey.GetValue(app.Config.Value.Hotkeys.Editor)?.ToString()
+                                    @{
+                                        var key = (Hotkey)hotkey.GetValue(app.Config.Value.Hotkeys.Editor);
+                                    }
+                                    <button class="w3-button w3-round-xlarge panel" @onclick=@(() => Rebind(key))>@(key?.ToString() ?? "none")</button>
                                 </Control>
                             </Setting>
                         }
@@ -77,7 +80,7 @@
                 </div>
             </TabPage>
             <TabPage Title="Plugins">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     <Setting Title="Safe Mode">
                         <Summary>
                             Safe mode prevents plugins from being loaded. Reboot required after changing.
@@ -111,7 +114,7 @@
                 </div>
             </TabPage>
             <TabPage Title="About">
-                <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
                     <Section Title="Updates">
                         <Setting Title="Check for updates">
                             <Summary>
@@ -202,14 +205,61 @@
     </footer>
 </Modal>
 
+<Modal @ref="rebind">
+    <header class="w3-container w3-display-container w3-center">
+        <h3>Rebind</h3>
+    </header>
+    <div class="w3-padding">
+        <p>Select the area below and press any key to rebind. Press ESC to cancel.</p>
+        <div class="w3-padding w3-round-xxlarge panel w3-center w3-large" tabindex="0" @onkeydown=tryRebind @onkeydown:preventDefault>
+            <div class="w3-margin" style="user-select: none;">
+                Press Any Key...
+            </div>
+            <div style="user-select: none;">
+                @if (hotkeyToRebind != null) {
+                    <span>@hotkeyToRebind.ToString()</span>
+                }
+            </div>
+        </div>
+    </div>
+    <footer class="w3-center w3-padding">
+        <button class="w3-button ok" @onclick=stopRebinding>Update</button>
+    </footer>
+</Modal>
+
 @code {
+    private string maxHeight = "60vh";
     Modal modal;
+    Modal rebind;
 
     public void Open() {
         this.modal?.SetVisibility(true);
+        this.rebind?.SetVisibility(false);
     }   
     public void Close() {
         this.modal?.SetVisibility(false);
+        this.rebind?.SetVisibility(false);
+    }
+
+    private Hotkey hotkeyToRebind;
+    private void Rebind(Hotkey hotkey) {
+        hotkeyToRebind = hotkey;
+        if (hotkeyToRebind != null) {
+            this.rebind?.SetVisibility(true);
+        }
+    }
+    private void stopRebinding() {
+        this.hotkeyToRebind = null;
+        this.rebind?.SetVisibility(false);
+        app.Config.Save();
+    }
+    private void tryRebind(KeyboardEventArgs args) {
+        if (args.Key == "Escape") {
+            return;
+        }
+        if (hotkeyToRebind != null) {
+            hotkeyToRebind.Rebind(args);
+        }
     }
 
     delegate void RefAction<T>(ref T item);
@@ -267,7 +317,7 @@
     private string current_version = typeof(AppSettings).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
     private string latest_version = null;
     private bool needs_updating = false;
-    private Regex regex = new Regex("\"tag_name\":\\s*\\\"([^\"]*)\\\"");
+    private Regex regex = new Regex("\"tag_name\":\\s*\\\"v?([^\"]*)\\\"");
     private async void checkVersion() {
         latest_version = null;
         needs_updating = false;
@@ -280,7 +330,7 @@
             using (var client = new HttpClient()) {
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible;)");
                 var result = await client.GetStringAsync(url);
-                latest_version = regex.Matches(result).Select((match) => match.Groups[1].Value).OrderBy(tag => tag).FirstOrDefault();
+                latest_version = regex.Matches(result).Select((match) => match.Groups[1].Value).OrderByDescending(tag => tag).FirstOrDefault();
                 var compare = StringComparer.OrdinalIgnoreCase.Compare(current_version, latest_version);
                 needs_updating = compare < 0;
             }

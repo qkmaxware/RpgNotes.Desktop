@@ -13,18 +13,18 @@
     <button class="w3-button w3-bar-item" title="heading 2" @onclick=@(() => makeHeader(2))>H<sub>2</sub></button>
     <button class="w3-button w3-bar-item" title="heading 3" @onclick=@(() => makeHeader(3))>H<sub>3</sub></button>
     <span   class="w3-bar-item error-text">|</span>
-    <button class="w3-button w3-bar-item" title="bold (ctrl+@(boldHotkey))" @onclick=makeBold><strong>B</strong></button>
-    <button class="w3-button w3-bar-item" title="italics (ctrl+@(italicsHotkey))" @onclick=makeItalics><i>i</i></button>
-    <button class="w3-button w3-bar-item" title="underline (ctrl+@(underlineHotkey))" @onclick=makeUnderline><u>U</u></button>
-    <button class="w3-button w3-bar-item" title="strikethrough (ctrl+@(strikeHotkey))" @onclick=makeStrike><s>O</s></button>
-    <button class="w3-button w3-bar-item" title="superscript (ctrl+@(superHotkey))" @onclick=makeSuper>x<sup>2</sup></button>
-    <button class="w3-button w3-bar-item" title="subscript (ctrl+@(subHotkey))" @onclick=makeSub>x<sub>2</sub></button>
+    <button class="w3-button w3-bar-item" title="bold (@(app.Config.Value.Hotkeys.Editor.BoldText))" @onclick=makeBold><strong>B</strong></button>
+    <button class="w3-button w3-bar-item" title="italics (@(app.Config.Value.Hotkeys.Editor.ItalicizeText))" @onclick=makeItalics><i>i</i></button>
+    <button class="w3-button w3-bar-item" title="underline (@(app.Config.Value.Hotkeys.Editor.UnderlineText))" @onclick=makeUnderline><u>U</u></button>
+    <button class="w3-button w3-bar-item" title="strikethrough (@(app.Config.Value.Hotkeys.Editor.StrikethroughText))" @onclick=makeStrike><s>O</s></button>
+    <button class="w3-button w3-bar-item" title="superscript (@(app.Config.Value.Hotkeys.Editor.SuperscriptText))" @onclick=makeSuper>x<sup>2</sup></button>
+    <button class="w3-button w3-bar-item" title="subscript (@(app.Config.Value.Hotkeys.Editor.SubscriptText))" @onclick=makeSub>x<sub>2</sub></button>
     <span   class="w3-bar-item error-text">|</span>
     <button title="blockquote" class="w3-button w3-bar-item" @onclick=makeQuote>"</button>
     <button title="unordered list" class="w3-button w3-bar-item" @onclick=addUl><img src="static/images/unorderedList.svg" height=20></button>
     <button title="ordered list" class="w3-button w3-bar-item" @onclick=addOl><img src="static/images/orderedList.svg" height=20></button>
     <span   class="w3-bar-item error-text">|</span>
-    <button title="insert link to article (ctrl+@(linkingHotkey))" class="w3-button w3-bar-item" @onclick=showLinkingScreen><img src="static/images/link.svg" height=20></button>
+    <button title="insert link to article (@(app.Config.Value.Hotkeys.Editor.InsertArticleLink))" class="w3-button w3-bar-item" @onclick=showLinkingScreen><img src="static/images/link.svg" height=20></button>
     <span   class="w3-bar-item error-text">|</span>
     <button class="w3-button w3-bar-item" @onclick=save>save</button>
     <button title="view" class="w3-button w3-bar-item w3-right" @onclick=render><img src="static/images/view.svg" height=20></button>
@@ -104,13 +104,6 @@
         ).Url);
     }
 
-    private readonly string linkingHotkey = "Enter";
-    private readonly string boldHotkey = "b";
-    private readonly string italicsHotkey = "i";
-    private readonly string underlineHotkey = "u";
-    private readonly string strikeHotkey = "d";
-    private readonly string superHotkey = "^";
-    private readonly string subHotkey = ".";
     private void listen(KeyboardEventArgs args) {
         if (app.Config.Value.Hotkeys.Editor.InsertArticleLink.IsTriggered(args)) {
             showLinkingScreen();
