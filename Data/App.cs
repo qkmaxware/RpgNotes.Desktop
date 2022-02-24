@@ -46,18 +46,33 @@ public class AppData {
 
 }
 
-public struct AppAppearanceConfig {
+public class AppAppearanceConfig {
     public string ThemeCssPath {get; set;}
     public string CustomCss {get; set;}
 }
 
-public struct AppExtensionConfig {
+public class AppEditorHotkeyConfig {
+    public Hotkey BoldText {get; set;} = new Hotkey { CtrlKey = true, Key = "b" };
+    public Hotkey ItalicizeText {get; set;} = new Hotkey { CtrlKey = true, Key = "i" };
+    public Hotkey UnderlineText {get; set;} = new Hotkey { CtrlKey = true, Key = "u" };
+    public Hotkey StrikethroughText {get; set;} = new Hotkey { CtrlKey = true, Key = "d" };
+    public Hotkey SuperscriptText {get; set;} = new Hotkey { CtrlKey = true, Keys = new string[]{ "6", "^" } };
+    public Hotkey SubscriptText {get; set;} = new Hotkey { CtrlKey = true, Key = "." };
+    public Hotkey InsertArticleLink {get; set;} = new Hotkey { CtrlKey = true, Key = "Enter" };
+}
+
+public class AppHotkeyConfig {
+    public AppEditorHotkeyConfig Editor {get; set;} = new AppEditorHotkeyConfig();
+}
+
+public class AppExtensionConfig {
     public bool SafeMode {get; set;}
 }
 
-public struct AppConfig {
-    public AppAppearanceConfig Appearance {get; set;}
-    public AppExtensionConfig Extensions {get; set;}
+public class AppConfig {
+    public AppAppearanceConfig Appearance {get; set;} = new AppAppearanceConfig();
+    public AppHotkeyConfig Hotkeys = new AppHotkeyConfig();
+    public AppExtensionConfig Extensions {get; set;} = new AppExtensionConfig();
 }
 
 }

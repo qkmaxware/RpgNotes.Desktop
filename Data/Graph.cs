@@ -93,7 +93,7 @@ public class SpringLayout : GraphLayoutAlgorithm {
     private static Random rng = new Random();
 
     private static float randomBetween(float one, float two) {
-        var t = rng.NextSingle();
+        var t = (float)rng.NextDouble();
         return (1 - t) * one + t * two;
     }
     

@@ -1,5 +1,6 @@
 @inject IJSRuntime js;
 @inject NavigationManager nav;
+@inject AppData app;
 @inherits EditorBase;
 @page "/home/{HomeRef}/editors/edit/{FileRef}"
 @using System.Timers
@@ -111,25 +112,25 @@
     private readonly string superHotkey = "^";
     private readonly string subHotkey = ".";
     private void listen(KeyboardEventArgs args) {
-        if (args.Key == linkingHotkey && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.InsertArticleLink.IsTriggered(args)) {
             showLinkingScreen();
         }
-        if (args.Key == boldHotkey && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.BoldText.IsTriggered(args)) {
             makeBold();
         }
-        if (args.Key == underlineHotkey && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.UnderlineText.IsTriggered(args)) {
             makeUnderline();
         }
-        if (args.Key == italicsHotkey && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.ItalicizeText.IsTriggered(args)) {
             makeItalics();
         }
-        if (args.Key == strikeHotkey && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.StrikethroughText.IsTriggered(args)) {
             makeStrike();
         }
-        if ((args.Key == "6" || args.Key == superHotkey) && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.SuperscriptText.IsTriggered(args)) {
             makeSuper();
         }
-        if ((args.Key == subHotkey) && args.CtrlKey == true) {
+        if (app.Config.Value.Hotkeys.Editor.SubscriptText.IsTriggered(args)) {
             makeSub();
         }
     }

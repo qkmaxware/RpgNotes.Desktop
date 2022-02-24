@@ -74,6 +74,14 @@ public static class FsExtensions {
         }
     }
 
+    public static void ShowInExplorer(this DirectoryInfo dir) {
+        if (System.Environment.OSVersion.Platform == PlatformID.Win32NT) {
+            System.Diagnostics.Process.Start("explorer.exe", dir.FullName);
+        } else {
+            System.Diagnostics.Process.Start("mimeopen", Path.GetDirectoryName(dir.FullName));
+        }
+    }
+
     public static string MimeType(this FileInfo file) {
         // Based on list here https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
         return file.Extension switch {

@@ -1,6 +1,7 @@
 @using RpgNotes.Desktop.Shared.Layouts
 @using System.Text.RegularExpressions
 @using System.Reflection
+@using System.IO
 @inject AppData app
 
 <Modal @ref="modal">
@@ -33,6 +34,7 @@
                                 <option value="@path.FullName">@System.IO.Path.GetFileNameWithoutExtension(path.Name)</option>
                                 }
                             </select>
+                            <button class="w3-button w3-round panel w3-margin-top" style="width: 100%;" @onclick=openThemes>Open Theme Directory</button>
                             <button class="w3-button w3-round panel w3-margin-top" style="width: 100%;" @onclick=createTheme>Create Theme</button>
                         </Control>
                     </Setting>
@@ -62,7 +64,16 @@
             </TabPage>
             <TabPage Title="Hotkeys">
                 <div class="w3-padding header-border" style="border-width: 1px; border-style: solid;">
-                    
+                    <Section Title="Editor">
+                        @foreach (var hotkey in app.Config.Value.Hotkeys.Editor.GetType().GetProperties()) {
+                            <Setting Title=@hotkey.Name>
+                                <Summary>&nbsp;</Summary>
+                                <Control>
+                                    @hotkey.GetValue(app.Config.Value.Hotkeys.Editor)?.ToString()
+                                </Control>
+                            </Setting>
+                        }
+                    </Section>
                 </div>
             </TabPage>
             <TabPage Title="Plugins">
@@ -110,13 +121,17 @@
                                 </tr>
                                 @if (!string.IsNullOrEmpty(latest_version)) {
                                 <tr>
-                                    <td>Latest Version</td><td>@latest_version @if(needs_updating){<a href="https://github.com/qkmaxware/RpgNotes.Desktop/releases" target="_blank" class="w3-button w3-margin-left w3-small w3-round-xlarge error" style="padding: 4px 8px;">update</a>}</td>
+                                    <td>Latest Version</td><td>@latest_version</td>
                                 </tr>
                                 }
                             </table>
                             </Summary>
                             <Control>
-                            <button class="w3-button ok w3-round" style="width: 12em;" @onclick=checkVersion>Check Now</button>
+                                @if(needs_updating){
+                                    <a href="https://github.com/qkmaxware/RpgNotes.Desktop/releases" target="_blank" class="w3-button w3-round error" style="width: 12em;">Update</a>
+                                } else {
+                                    <button class="w3-button w3-round ok" style="width: 12em;" @onclick=checkVersion>Check Now</button>
+                                }
                             </Control>
                         </Setting>
                     </Section>
@@ -222,6 +237,9 @@
                 config.Appearance = appearance;
             });
         }
+    }
+    private void openThemes() {
+        new DirectoryInfo(app.AppThemeDirectory).ShowInExplorer();
     }
     private void createTheme() {
         var fs = new System.IO.FileInfo(
