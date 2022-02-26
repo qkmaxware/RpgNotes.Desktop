@@ -1,0 +1,80 @@
+@inject AppData app;
+@using System.IO
+
+<Modal @ref=modal>
+    <header class="w3-container">
+        <h3>Create</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Filename</h4>
+        <div class="w3-right-align">
+            <input type="text" class="w3-input w3-round" @bind=filename>
+            <RandomNameGenerator OnGetName=@((name) => Suggest(name))></RandomNameGenerator>    
+        </div>
+        <h4>Template</h4>
+        <div class="w3-row">
+            @if(app.Extensions != null && app.Extensions.ArticleTemplates != null) {
+                foreach (var template in app.Extensions.ArticleTemplates) {
+                    <div class="w3-col s2 w3-padding">
+                        <div style="overflow: hidden;" class="w3-border w3-round-large w3-center @(template == this.selectedTemplate ? "ok" : string.Empty)" @onclick=@(() => this.selectedTemplate = template)>
+                            @if (!string.IsNullOrEmpty(template.IconUrl)) {
+                                <img src="@template.IconUrl" style="width:100%; height:auto;">
+                            }
+                            <span style="user-select: none;">
+                                @template.Name
+                            </span>
+                        </div>
+                    </div>
+                }   
+            }
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancel>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <button class="w3-button w3-round ok" @onclick=confirm>Confirm</button>
+        </div>
+    </footer>
+</Modal>
+
+@code {
+    private string filename;
+
+    private Modal modal;
+    private DirectoryInfo parent;
+    private Template selectedTemplate;
+
+    public void Open(DirectoryInfo parent, string defaultFilename) {
+        this.parent = parent;
+        this.filename = defaultFilename;
+        modal?.SetVisibility(true);
+        StateHasChanged();
+    }
+
+    public void Suggest(string filename) {
+        // Make name unique
+        var baseFilename = filename;
+        var realfilename = baseFilename;
+        var index = 0;
+        var files = parent.GetFiles().Select(file => file.Name).Concat(parent.GetDirectories().Select(dir => dir.Name)).ToList();
+        while (files.Contains(realfilename + ".md")) {
+            realfilename = baseFilename + " " + (++index);
+        }
+        this.filename = realfilename;
+        StateHasChanged();
+    }
+
+    private void confirm() {
+        using (var writer = new StreamWriter(Path.Combine(this.parent.FullName, filename + ".md"))) {
+            if (this.selectedTemplate != null) {
+                writer.WriteLine(this.selectedTemplate.Markdown());
+            }
+        }
+        modal?.SetVisibility(false);
+    }
+    private void cancel() {
+        modal?.SetVisibility(false);
+    }
+}

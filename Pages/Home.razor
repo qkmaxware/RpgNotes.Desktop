@@ -62,8 +62,9 @@
 <DeletePopup @ref=deletePopup></DeletePopup>
 
 @* File Explorer *@
+<CreateNew @ref=create>
+</CreateNew>
 <RenamePopup @ref=rename>
-    <RandomNameGenerator OnGetName=@((name) => rename.Suggest(name + ".md"))></RandomNameGenerator>
 </RenamePopup>
 <ContextMenu T=FileSystemInfo @ref=fileContext>
     <ul class="w3-ul">
@@ -165,6 +166,7 @@
     #region File Explorer
     private ContextMenu<FileSystemInfo> fileContext;
     private RenamePopup rename;
+    private CreateNew create;
     public void OpenFileContext(MouseEventArgs args, FileSystemInfo fsObj) {
         fileContext.Open(args.ClientX, args.ClientY, fsObj);
     }
@@ -176,10 +178,7 @@
         while (files.Contains(filename + ".md")) {
             filename = baseFilename + " " + (++index);
         }
-        var filePath = Path.Combine(parent.FullName, filename + ".md");
-        var file = new FileInfo(filePath);
-        using (var writer = new StreamWriter(file.FullName)) {}
-        rename.Rename(file);
+        create?.Open(parent, filename);
     }
     private void createFileInDirWithTimestamp(DirectoryInfo parent) {
         var now = DateTime.Now;

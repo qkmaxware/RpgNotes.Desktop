@@ -18,7 +18,27 @@ public class ExtensionHost {
         this.MarkdownPreprocessors.Add(preprocessor);
     }
 
-    public Dictionary<FileInfo, IExtension> Loaded = null;
+    internal List<Template> ArticleTemplates = new List<Template>() {
+        // Default templates
+        Template.None,
+        Template.PC,
+        Template.NPC,
+        Template.City,
+        Template.Condition,
+        Template.Conflict,
+        Template.Item,
+        Template.Language,
+        Template.Planet,
+        Template.Quest,
+        Template.Region,
+        Template.Technology,
+        Template.Vehicle
+    };
+    public void InstallTemplate(Template template) {
+        this.ArticleTemplates.Add(template);
+    }
+
+    internal Dictionary<FileInfo, IExtension> Loaded = null;
 
     internal bool TryLoadPlugins() {
         try {
