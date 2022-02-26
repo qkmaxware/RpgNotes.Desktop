@@ -2,6 +2,8 @@
 @using System.IO
 @using System.Text.RegularExpressions
 @using RpgNotes.Desktop.Shared.Layouts
+@using Shared.Popups
+@using System.Text.Json
 @inject IJSRuntime js;
 
 <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1">
@@ -67,7 +69,7 @@
     <button class="w3-button w3-bar-item" @onclick=zoomOut>-</button>
 </Header>
 
-<div style="position: fixed; top: 48px; left: 12px;" class="panel w3-round-xlarge">
+<div style="position: fixed; top: 48px; left: 12px; min-width: 180px;" class="panel w3-round-xlarge">
     <ul class="w3-ul no-lines">
         <li>
             <div class="button tree-caret @(groupsExpanded ? "tree-caret-expanded" : string.Empty)" @onclick=@(() => groupsExpanded = !groupsExpanded)>Groups</div>
@@ -78,18 +80,20 @@
                     <li>
                         <div class="w3-row">
                             <div class="w3-col w3-right" style="width: 64px">
-                                <input type="color" class="w3-input" style="height: 39px;" @bind=group.Colour>
+                                <input type="color" class="w3-input" style="height: 39px;" value="@group.Colour"@onchange=@((ChangeEventArgs e) => { group.Colour = e.Value?.ToString(); colourNodes(); })>
                             </div>
                             <div class="w3-rest">
                                 <input class="w3-input" @bind=group.Title placeholder="group title">
                             </div>
                         </div>
-                        <label>Filter Expression</label>
-                        <input title="@group.CompilationErrorMessage" class="w3-input border solid @(group.CompiledFromString ? "ok-border" : "error-border")" @bind=group.FilterString>
+                        <div class="w3-right-align">
+                            <button class="w3-button" @onclick=@(() => openExprBuilder(group))>Expression</button>
+                            <button class="w3-button error" @onclick=@(() => { this.Groups.Remove(group); colourNodes(); })>Delete</button>
+                        </div>
                     </li>
                 }
                 </ol>
-                <div class="w3-right-align">
+                <div class="w3-margin-left">
                     <button class="w3-button" @onclick=@(() => this.Groups.Add(new NodeGroup()))>Add +</button>
                 </div>
             </div>
@@ -97,6 +101,8 @@
         </li>
     </ul>
 </div>
+
+<RpgNotes.Desktop.Shared.Popups.ExpressionBuilder @ref=exprBuilder OnSave=updateExpressionForGroup></RpgNotes.Desktop.Shared.Popups.ExpressionBuilder>
 
 <Sidebar @ref="featureDetailsSidebar" Style="z-index: 2;">
     <div>
@@ -172,18 +178,17 @@
         if (firstRender) {
             await js.InvokeVoidAsync("RpgNotes.Graph.Setup", this.container, this.element);
         } 
-        // Always do this
-        {   
-            // Redo the group
-            if (this.dataGraph != null && this.Groups != null && this.Groups.Count > 0) {
-                foreach (var node in dataGraph.Nodes) {
-                    node.Data.Colour = "initial";
-                    foreach (var group in this.Groups) {
-                        if (group.IsMatch(node.Data.Article)) {
-                            // Node exists in this group
-                            node.Data.Colour = group.Colour;
-                            break;
-                        }
+    }
+    private void colourNodes() {
+        if (this.dataGraph != null && this.Groups != null && this.Groups.Count > 0) {
+            foreach (var node in dataGraph.Nodes) {
+                node.Data.Colour = "initial";
+                foreach (var group in this.Groups) {
+                    // Console.WriteLine(JsonSerializer.Serialize(group.Filter));
+                    if (group.IsMatch(node.Data.Article)) {
+                        // Node exists in this group
+                        node.Data.Colour = group.Colour;
+                        break;
                     }
                 }
             }
@@ -193,6 +198,20 @@
     #region Groups Selection
     private bool groupsExpanded = false;
     private List<NodeGroup> Groups = new List<NodeGroup>();
+    private ExpressionBuilder exprBuilder;
+    private NodeGroup groupBeingEdited;
+    private void openExprBuilder(NodeGroup group) {
+        this.groupBeingEdited = group;
+        exprBuilder?.Open(group.Filter);
+    }
+    private void updateExpressionForGroup(FilterExpression expr) {
+        if (groupBeingEdited != null) {
+            groupBeingEdited.Filter = expr;
+
+            colourNodes();
+            StateHasChanged();
+        }
+    }
     #endregion
 
     private class Circle : DisplayedVertex {

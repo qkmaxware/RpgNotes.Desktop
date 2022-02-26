@@ -28,11 +28,11 @@ public class FilterExpression {
 	public FilterComparison? Comparator {get; set;}
 	public FilterSelector? Selector {get; set;}
 	 
-	public FilterExpression[] SubExpressions {get; set;}
+	public List<FilterExpression> SubExpressions {get; set;}
 	public string Value {get; set;}
 
 	private bool and(Article article) {
-		if (SubExpressions != null && SubExpressions.Length > 0) {
+		if (SubExpressions != null && SubExpressions.Count > 0) {
 			var match = true;
 			foreach (var subexpr in this.SubExpressions) {
 				var sub_match = subexpr.IsMatch(article);
@@ -45,7 +45,7 @@ public class FilterExpression {
 	}
 	
 	private bool or(Article article) {
-		if (SubExpressions != null && SubExpressions.Length > 0) {
+		if (SubExpressions != null && SubExpressions.Count > 0) {
 			var match = false;
 			foreach (var subexpr in this.SubExpressions) {
 				var sub_match = subexpr.IsMatch(article);
@@ -58,7 +58,7 @@ public class FilterExpression {
 	}
 	
 	private bool xor(Article article) {
-		if (SubExpressions != null && SubExpressions.Length > 0) {
+		if (SubExpressions != null && SubExpressions.Count > 0) {
 			var match = false;
 			foreach (var subexpr in this.SubExpressions) {
 				var sub_match = subexpr.IsMatch(article);
@@ -196,18 +196,18 @@ public class FilterExpression {
 			if (op == "and") {
 				first = new FilterExpression {
 					Operator = FilterOperator.And,
-					SubExpressions = new FilterExpression[] { first, next }
+					SubExpressions = new List<FilterExpression> { first, next }
 				};
 			} else if (op == "or") {
 				first = new FilterExpression {
 					Operator = FilterOperator.Or,
-					SubExpressions = new FilterExpression[] { first, next }
+					SubExpressions = new List<FilterExpression> { first, next }
 				};
 			}
 			else if (op == "xor") {
 				first = new FilterExpression {
 					Operator = FilterOperator.Xor,
-					SubExpressions = new FilterExpression[] { first, next }
+					SubExpressions = new List<FilterExpression> { first, next }
 				};
 			}
 		}

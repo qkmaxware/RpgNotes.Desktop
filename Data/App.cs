@@ -71,7 +71,7 @@ public class AppExtensionConfig {
 
 public class AppConfig {
     public AppAppearanceConfig Appearance {get; set;} = new AppAppearanceConfig();
-    public AppHotkeyConfig Hotkeys = new AppHotkeyConfig();
+    public AppHotkeyConfig Hotkeys {get; set;} = new AppHotkeyConfig();
     public AppExtensionConfig Extensions {get; set;} = new AppExtensionConfig();
 }
 
