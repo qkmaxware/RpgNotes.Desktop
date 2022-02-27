@@ -12,7 +12,7 @@
         @if (!string.IsNullOrEmpty(name)) {
         <input @ref="confirmationInput" type="text" class="w3-input w3-round" @bind=confirm_str @bind:event="oninput" placeholder="Type @(name) to confirm">
         <p>
-            Type @(name) above to confirm.
+            Type "@(name)" above to confirm.
         </p>
         }
     </div>

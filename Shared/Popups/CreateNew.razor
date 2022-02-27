@@ -12,21 +12,28 @@
             <RandomNameGenerator OnGetName=@((name) => Suggest(name))></RandomNameGenerator>    
         </div>
         <h4>Template</h4>
-        <div class="w3-row">
-            @if(app.Extensions != null && app.Extensions.ArticleTemplates != null) {
-                foreach (var template in app.Extensions.ArticleTemplates) {
-                    <div class="w3-col s2 w3-padding">
-                        <div style="overflow: hidden;" class="w3-border w3-round-large w3-center @(template == this.selectedTemplate ? "ok" : string.Empty)" @onclick=@(() => this.selectedTemplate = template)>
-                            @if (!string.IsNullOrEmpty(template.IconUrl)) {
-                                <img src="@template.IconUrl" style="width:100%; height:auto;">
+        <div class="w3-row" style="max-height: 40vh; overflow-y: auto;">
+            <ul class="w3-ul"> 
+                @if(app.Extensions != null && app.Extensions.ArticleTemplates != null) {
+                    foreach (var template in app.Extensions.ArticleTemplates) {
+                        <li class="button w3-padding-hor-16 @(template == this.selectedTemplate ? "ok" : string.Empty)" @onclick=@(() => this.selectedTemplate = template)>
+                            <img src="@template.IconUrl" class="w3-left" style="width:32px; padding: 4px; height:auto;">
+                            <span><b>@template.Name</b></span><br>
+                            <span>@template.Description</span>
+                            <span class="w3-right tree-caret @(template == this.selectedTemplate ? "tree-caret-expanded" : string.Empty)"></span>
+                            @if (template == this.selectedTemplate && this.selectedTemplate.Options != null) {
+                                var type = this.selectedTemplate.Options.GetType();
+                                <div class="w3-border-top w3-margin-left w3-right-align" style="padding-top: 16px;">
+                                    @foreach (var prop in type.GetProperties()) {
+                                        <label>@prop.Name</label>
+                                        <PropertyEditor Object=@this.selectedTemplate.Options Property=@prop></PropertyEditor>
+                                    }
+                                </div>
                             }
-                            <span style="user-select: none;">
-                                @template.Name
-                            </span>
-                        </div>
-                    </div>
-                }   
-            }
+                        </li>
+                    }
+                }
+            </ul>
         </div>
     </div>
     <footer class="w3-row w3-padding">
@@ -49,6 +56,7 @@
     public void Open(DirectoryInfo parent, string defaultFilename) {
         this.parent = parent;
         this.filename = defaultFilename;
+        this.selectedTemplate = null;
         modal?.SetVisibility(true);
         StateHasChanged();
     }

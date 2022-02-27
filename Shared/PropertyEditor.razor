@@ -1,0 +1,85 @@
+@using System.Reflection
+@inject AppData app;
+
+@if (Property != null && Object != null) {
+<div id="@(Property.Name)-editor" class="w3-right-align">
+    @if (Property.PropertyType == typeof(string)) {
+        <input 
+            type="text" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, args.Value?.ToString() ))>
+    } else if (Property.PropertyType == typeof(int)) {
+        <input 
+            type="number" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, int.Parse(args.Value?.ToString()) ))>
+    } else if (Property.PropertyType == typeof(long)) {
+        <input 
+            type="number" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, long.Parse(args.Value?.ToString()) ))>
+    } else if (Property.PropertyType == typeof(uint)) {
+        <input 
+            type="number" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, uint.Parse(args.Value?.ToString()) ))>
+    } else if (Property.PropertyType == typeof(ulong)) {
+        <input 
+            type="number" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, ulong.Parse(args.Value?.ToString()) ))>
+    } else if (Property.PropertyType == typeof(float)) {
+        <input 
+            type="number" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, float.Parse(args.Value?.ToString()) ))>
+    } else if (Property.PropertyType == typeof(double)) {
+        <input 
+            type="number" 
+            class="w3-input" 
+            style="@inputStyle" 
+            value=@(Property.GetValue(Object)?.ToString())
+            @onchange=@((ChangeEventArgs args) => Property.SetValue( Object, double.Parse(args.Value?.ToString()) ))>
+    } else if (Property.PropertyType == typeof(bool)) {
+        <button class="w3-button @((bool)Property.GetValue(Object) == false ? "disable" : "error")" @onclick=@(() => Property.SetValue(Object, false))>&times;</button><button class="w3-button @((bool)Property.GetValue(Object) == true ? "ok" : "disable")" @onclick=@(() => Property.SetValue(Object, true))>&check;</button>
+    } else if (Property.PropertyType == typeof(RpgSystem)) {
+        <select 
+            style="@inputStyle"
+            value="@(((RpgSystem)Property.GetValue(Object))?.Abbreviation)"
+            @onchange=@((ChangeEventArgs args) => {
+                var value = app.Extensions.Systems.Where(sys => sys.Abbreviation == args.Value?.ToString()).FirstOrDefault();
+                Property.SetValue(Object, value);
+            })>
+            @if (app.Extensions != null && app.Extensions.Systems != null) {
+                <option></option>
+                foreach (var system in app.Extensions.Systems) {
+                    <option value="@system.Abbreviation">
+                        <img src=@system.IconUrl style="width: 24px;">
+                        @system.Name
+                    </option>
+                }
+            }
+        </select>
+    }
+</div>
+}
+
+@code {
+
+    private static string inputStyle = "margin-left: auto; width: 50%; min-width: 120px";
+    [Parameter] public object Object {get; set;}
+    [Parameter] public PropertyInfo Property {get; set;}
+
+}

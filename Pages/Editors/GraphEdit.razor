@@ -76,7 +76,7 @@
             @if(groupsExpanded) {
             <div>
                 <ol class="no-lines">
-                @foreach (var group in this.Groups) {
+                @foreach (var group in this.Groups.Value) {
                     <li>
                         <div class="w3-row">
                             <div class="w3-col w3-right" style="width: 64px">
@@ -88,13 +88,13 @@
                         </div>
                         <div class="w3-right-align">
                             <button class="w3-button" @onclick=@(() => openExprBuilder(group))>Expression</button>
-                            <button class="w3-button error" @onclick=@(() => { this.Groups.Remove(group); colourNodes(); })>Delete</button>
+                            <button class="w3-button error" @onclick=@(() => { this.Groups.Value.Remove(group); colourNodes(); })>Delete</button>
                         </div>
                     </li>
                 }
                 </ol>
                 <div class="w3-margin-left">
-                    <button class="w3-button" @onclick=@(() => this.Groups.Add(new NodeGroup()))>Add +</button>
+                    <button class="w3-button" @onclick=@(() => this.Groups.Value.Add(new NodeGroup()))>Add +</button>
                 </div>
             </div>
             }
@@ -138,6 +138,13 @@
         this.Directory = new DirectoryInfo(file_path);
 
         if (Exists) {
+            var data_dir = Path.Combine(this.Directory.FullName, ".data");
+            System.IO.Directory.CreateDirectory(data_dir);
+            this.Groups = new HddValue<List<NodeGroup>>(Path.Combine(data_dir, "groups.json"));
+            if (this.Groups.Value == null) {
+                this.Groups.Value = new List<NodeGroup>();
+            }
+
             Graph<Circle,Article.Connection> graph = new Graph<Circle, Article.Connection>(); 
             var articles = Directory.GetMarkdownArticles();
             var nodes = articles.ToDictionary(article => article.FullName, article => graph.NewNode(Path.GetFileNameWithoutExtension(article.Name), new Circle{ Article=new Article(article) }));
@@ -180,10 +187,10 @@
         } 
     }
     private void colourNodes() {
-        if (this.dataGraph != null && this.Groups != null && this.Groups.Count > 0) {
+        if (this.dataGraph != null && this.Groups != null && this.Groups.Value.Count > 0) {
             foreach (var node in dataGraph.Nodes) {
                 node.Data.Colour = "initial";
-                foreach (var group in this.Groups) {
+                foreach (var group in this.Groups.Value) {
                     // Console.WriteLine(JsonSerializer.Serialize(group.Filter));
                     if (group.IsMatch(node.Data.Article)) {
                         // Node exists in this group
@@ -197,7 +204,7 @@
 
     #region Groups Selection
     private bool groupsExpanded = false;
-    private List<NodeGroup> Groups = new List<NodeGroup>();
+    private HddValue<List<NodeGroup>> Groups;
     private ExpressionBuilder exprBuilder;
     private NodeGroup groupBeingEdited;
     private void openExprBuilder(NodeGroup group) {

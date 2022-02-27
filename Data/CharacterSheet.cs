@@ -1,4 +1,5 @@
 using System.IO;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace RpgNotes.Desktop.Data {
 
@@ -6,7 +7,10 @@ namespace RpgNotes.Desktop.Data {
 /// Base class for character sheets
 /// </summary>
 public class CharacterSheet {
-    private static YamlDotNet.Serialization.Serializer yaml = new YamlDotNet.Serialization.Serializer();
+    private static YamlDotNet.Serialization.ISerializer yaml 
+        = new YamlDotNet.Serialization.SerializerBuilder()
+        .WithNamingConvention(HyphenatedNamingConvention.Instance)
+        .Build();
 
     /// <summary>
     /// Convert a character sheet to a yaml template
