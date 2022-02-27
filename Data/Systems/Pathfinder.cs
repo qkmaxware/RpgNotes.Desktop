@@ -7,7 +7,7 @@ public class Pathfinder : IRpgSystemProvider {
         yield return new RpgSystem {
             Name = "Pathfinder",
             Abbreviation = "Pathfinder",
-            Description = "",
+            Description = "Take the first step into an amazing world of fantasy adventure!",
             Publication = new Publication {
                 Publisher = "Paizo",
                 Url = "https://paizo.com/pathfinder",

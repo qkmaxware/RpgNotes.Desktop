@@ -7,7 +7,7 @@ public class Starfinder : IRpgSystemProvider {
         yield return new RpgSystem {
             Name = "Starfinder",
             Abbreviation = "Starfinder",
-            Description = "",
+            Description = "Blast off into a galaxy of adventure.",
             Publication = new Publication {
                 Publisher = "Paizo",
                 Url = "https://paizo.com/starfinder",

@@ -22,8 +22,11 @@ tags:
     ) {
         Options = new CharacterTemplateOptions(),
         Transformation = (self, tpl) => {
-            var o = (CharacterTemplateOptions)self.Options;
-            return tpl.Replace("{{ sheet }}", o.System.CharacterSheetTemplate?.Yaml() ?? string.Empty);
+            if (self.Options != null && self.Options is CharacterTemplateOptions o) {
+                return tpl.Replace("{{ sheet }}", o.System.CharacterSheetTemplate.Yaml());
+            } else {
+                return tpl.Replace("{{ sheet }}", string.Empty);
+            }
         }
     };
 
