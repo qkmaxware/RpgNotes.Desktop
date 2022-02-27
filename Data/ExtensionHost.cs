@@ -14,8 +14,13 @@ public class ExtensionHost {
     }
 
     internal List<IMarkdownPreprocessor> MarkdownPreprocessors = new List<IMarkdownPreprocessor>();
-    public void InstallPreprocessor(IMarkdownPreprocessor preprocessor) {
+    public void Install(IMarkdownPreprocessor preprocessor) {
         this.MarkdownPreprocessors.Add(preprocessor);
+    }
+
+    internal List<RpgSystem> Systems = RpgSystem.FindRpgSystems(); // Load default systems
+    public void Install(RpgSystem system) {
+        this.Systems.Add(system);
     }
 
     internal List<Template> ArticleTemplates = new List<Template>() {
@@ -34,7 +39,7 @@ public class ExtensionHost {
         Template.Technology,
         Template.Vehicle
     };
-    public void InstallTemplate(Template template) {
+    public void Install(Template template) {
         this.ArticleTemplates.Add(template);
     }
 
