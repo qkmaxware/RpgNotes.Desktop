@@ -69,7 +69,7 @@
     <button class="w3-button w3-bar-item" @onclick=zoomOut>-</button>
 </Header>
 
-<div style="position: fixed; top: 48px; left: 12px; min-width: 180px;" class="panel w3-round-xlarge">
+<div style="position: fixed; top: 48px; left: 12px; min-width: 200px;" class="panel w3-round-xlarge">
     <ul class="w3-ul no-lines">
         <li>
             <div class="button tree-caret @(groupsExpanded ? "tree-caret-expanded" : string.Empty)" @onclick=@(() => groupsExpanded = !groupsExpanded)>Groups</div>
@@ -87,13 +87,13 @@
                             </div>
                         </div>
                         <div class="w3-right-align">
-                            <button class="w3-button" @onclick=@(() => openExprBuilder(group))>Expression</button>
-                            <button class="w3-button error" @onclick=@(() => { this.Groups.Value.Remove(group); colourNodes(); })>Delete</button>
+                            <button class="w3-button" @onclick=@(() => openExprBuilder(group))>Filter</button>
+                            <button class="w3-button" @onclick=@(() => { this.Groups.Value.Remove(group); colourNodes(); })>&times;</button>
                         </div>
                     </li>
                 }
                 </ol>
-                <div class="w3-margin-left">
+                <div class="w3-right-align">
                     <button class="w3-button" @onclick=@(() => this.Groups.Value.Add(new NodeGroup()))>Add +</button>
                 </div>
             </div>
@@ -114,10 +114,6 @@
             <div class="w3-padding">
                 <MarkdownRender @ref=articleDetailRenderer></MarkdownRender>
             </div>
-        </TabPage>
-        <TabPage Title=Marker>
-            <hr>
-            
         </TabPage>
     </TabView>
 </Sidebar>
@@ -199,6 +195,7 @@
                     }
                 }
             }
+            this.Groups.Save();
         }
     }
 
@@ -266,6 +263,7 @@
         svg_x_offset = -1 * bounds.MinX;
         svg_y_offset = -1 * bounds.MinY;
         this.displayGraph = graphToDisplay;
+        this.colourNodes();
     }
 
     private int buffer = 100;
