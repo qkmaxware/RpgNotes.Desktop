@@ -42,7 +42,7 @@
         <CalendarExplorer Directory=@this.Directory OnRightClick=OpenCalendarContext OnFileDbClick=OpenCalendar></CalendarExplorer>
     }
     @if (tab == Tab.Collections) {
-        <CollectionExplorer Directory=@this.Directory OnFileDbClick=@((article) => openLeft(article.File))></CollectionExplorer>
+        <CollectionExplorer @ref=collectionsExplorer Directory=@this.Directory OnFileDbClick=@((article) => openLeft(article.File)) OnCollectionRightClick=openCollectionGroupContext OnArticleRightClick=openCollectionArticleContext></CollectionExplorer>
     }
 </div>
 @* Secondary Sidebar *@
@@ -79,8 +79,8 @@
         @if (context is DirectoryInfo dir) {
         <li>
             <ul class="w3-ul no-lines">
-                <li class="button" @onclick=@(() => createFileInDir(dir))>New File</li>
-                <li class="button" @onclick=@(() => createFileInDirWithTimestamp(dir))>New Timestamped File</li>
+                <li class="button" @onclick=@(() => createFileInDir(dir))>New Article</li>
+                <li class="button" @onclick=@(() => createFileInDirWithTimestamp(dir))>New Timestamped Article</li>
                 <li class="button" @onclick=@(() => createSubdirInDir(dir))>New Folder</li>
             </ul>
         </li>
@@ -131,6 +131,33 @@
             <ul class="w3-ul no-lines">
                 <li class="button" @onclick=@(() => rename.Rename(context.SourceFile))>Rename</li>
                 <li class="button" @onclick=@(() => delete(context.SourceFile))>Delete</li>
+            </ul>
+        </li>
+    </ul>
+</ContextMenu>
+
+@* Collections *@
+<ContextMenu T=Collection @ref=collectionContext>
+    <ul class="w3-ul">
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => editCollection(context))>Modify</li>
+            </ul>
+        </li>
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => rename.Rename(context.SourceFile))>Rename</li>
+                <li class="button" @onclick=@(() => delete(context.SourceFile))>Delete</li>
+            </ul>
+        </li>
+    </ul>
+</ContextMenu>
+<ContextMenu T=Article @ref=collectionArticleContext>
+    <ul class="w3-ul">
+        <li>
+            <ul class="w3-ul no-lines">
+                <li class="button" @onclick=@(() => rename.Rename(context.File))>Rename</li>
+                <li class="button" @onclick=@(() => delete(context.File))>Delete</li>
             </ul>
         </li>
     </ul>
@@ -223,7 +250,13 @@
     private DeletePopup deletePopup;
     private void delete(FileSystemInfo fs) {
         if (fs != null)
-            deletePopup?.Delete(Path.GetFileNameWithoutExtension(fs.Name), () => fs.Delete());
+            deletePopup?.Delete(
+                Path.GetFileNameWithoutExtension(fs.Name), 
+                () => {
+                    fs.Delete();
+                    StateHasChanged();
+                }
+            );
     }
 
     private TabbedPages leftTabs;
@@ -320,6 +353,23 @@
                 )
             );
         }
+    }
+    #endregion
+
+    #region Collections
+    private CollectionExplorer collectionsExplorer;
+    private ContextMenu<Collection> collectionContext;
+    private void openCollectionGroupContext(MouseEventArgs args, Collection collection) {
+        collectionContext?.Open(args.ClientX, args.ClientY, collection);
+    }
+    private void editCollection(Collection collection) {
+        if (collection != null) {
+            collectionsExplorer?.Edit(collection);
+        }
+    }
+    private ContextMenu<Article> collectionArticleContext;
+    private void openCollectionArticleContext(MouseEventArgs args, Article article) {
+        collectionArticleContext?.Open(args.ClientX, args.ClientY, article);
     }
     #endregion
 }

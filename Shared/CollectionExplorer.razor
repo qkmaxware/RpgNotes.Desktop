@@ -17,13 +17,13 @@
                 foreach (var collection in this.collections) {
                     var self = collection;
                     <li style="list-style-type: none;">
-                        <div class="button tree-caret @(self.Expanded ? "tree-caret-expanded" : string.Empty)" @onclick=@(() => { self.Expanded = !self.Expanded; if(self.Expanded) { refreshArticlesForCollection(self); }})>@self.Name</div>
+                        <div class="button tree-caret @(self.Expanded ? "tree-caret-expanded" : string.Empty)" @onclick=@(() => { self.Expanded = !self.Expanded; if(self.Expanded) { refreshArticlesForCollection(self); }}) @oncontextmenu=@((args) => openCollectionContextMenu(args, self)) @oncontextmenu:preventDefault="true">@self.Name</div>
                         <ul class="@(self.Expanded ? "tree-expanded" : "tree-collapse")" style="list-style-type: none; margin-block-start: 0; padding-inline-start: 2em;">
                             @if(self.Articles != null && self.Articles.Count > 0) {
                                 foreach (var article in self.Articles) {
                                     var name = article.Name;
                                     if (article != null && name != null && (this.Filter == null || this.Filter.IsMatch(name))) {
-                                        <li class="button" @ondblclick=@(() => openFile(article))>@name</li>
+                                        <li class="button" @ondblclick=@(() => openFile(article)) @oncontextmenu=@((args) => openArticleContextMenu(args, article)) @oncontextmenu:preventDefault="true">@name</li>
                                     }
                                 }
                             }
@@ -37,7 +37,7 @@
 
 <Modal @ref=newCollectionModal>
     <header class="w3-container">
-        <h3>New Calendar</h3>
+        <h3>New Collection</h3>
     </header>
     <div class="w3-padding">
         <h4>Name</h4>
@@ -68,9 +68,43 @@
     </footer>
 </Modal>
 
+<Modal @ref=editCollectionModal>
+    <header class="w3-container">
+        <h3>Modify Collection</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Tags To Include</h4>
+        <ol>
+        @if(this.tagsToEdit != null) {
+            for (var i = 0; i < this.tagsToEdit.Count; i++) {
+                var j = i;
+                <li>
+                    <input type="text" class="w3-input" @bind=tagsToEdit[j] placeholder="@($"{addTh(j + 1)} tag")">
+                </li>
+            }
+        }
+        </ol>
+        <div class="w3-right-align">
+            <button class="w3-round w3-button error" @onclick=removeTag>&minus;</button>
+            <button class="w3-round w3-button ok" @onclick=addTag>&plus;</button>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancelModifyCollection>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <button class="w3-button w3-round ok" @onclick=saveModifyCollection>Confirm</button>
+        </div>
+    </footer>
+</Modal>
+
 @code {
     [Parameter] public string Directory {get; set;}
     [Parameter] public Action<Article> OnFileDbClick {get; set;}
+
+    [Parameter] public Action<MouseEventArgs, Collection> OnCollectionRightClick {get; set;}
+    [Parameter] public Action<MouseEventArgs, Article> OnArticleRightClick {get; set;}
     private string regexStr;
     private static Regex allFilter = new Regex(".*");
     private static Regex noneFilter = new Regex("(?!x)x");
@@ -188,6 +222,38 @@
         newCollectionModal?.SetVisibility(false);
 
         this.collections.Add(collection);
+    }
+
+    private Modal editCollectionModal;
+    private Collection collectionToEdit;
+    private List<string> tagsToEdit;
+    public void Edit (Collection collection) {
+        collectionToEdit = collection;
+        this.tagsToEdit = collection?.Include;
+        if (this.tagsToEdit != null) {
+            editCollectionModal?.SetVisibility(true);
+        }
+    }
+    private void cancelModifyCollection() {
+        this.tagsToEdit = null;
+        editCollectionModal?.SetVisibility(false);
+    }
+    private void saveModifyCollection() {
+        if (collectionToEdit != null && collectionToEdit.SourceFile != null) {
+            System.IO.File.WriteAllText(
+                collectionToEdit.SourceFile.FullName, 
+                JsonSerializer.Serialize(collectionToEdit)
+            );
+        }
+        editCollectionModal?.SetVisibility(true);
+    }
+
+    private void openCollectionContextMenu(MouseEventArgs args, Collection collection) {
+        this.OnCollectionRightClick?.Invoke(args, collection);
+    }
+
+    private void openArticleContextMenu(MouseEventArgs args, Article article) {
+        this.OnArticleRightClick?.Invoke(args, article);
     }
 
     private void openFile(Article article) {

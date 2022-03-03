@@ -29,7 +29,6 @@ The following terms are used in the documentation and in the application itself.
 |------|---------|
 | World | The workspace of the application, contains multiple articles about people, places, and things. |
 | Article | A single entity within the world. These could be people, places, or things. |
-| Campaign | A special kind of article used for indicating groups of player characters and documenting their adventures in the world. A world may have many different ongoing campaigns. |
 
 ## Basic Functionality
 Visit the [Wiki](https://github.com/qkmaxware/RpgNotes.Desktop/wiki) for tutorials, usage examples, and documentation.

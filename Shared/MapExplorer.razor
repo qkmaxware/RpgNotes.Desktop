@@ -32,15 +32,22 @@
     <div class="w3-padding">
         <h4>Name</h4>
         <input type="text" class="w3-input" @bind=customMapName placeholder="map name">
+        <h4>Base Layer</h4>
+        <select class="w3-input" @bind="customMapBaseLayer">
+            <option></option>
+            @foreach (var file in new DirectoryInfo(this.Directory).GetImages()) {
+                <option value="@file.FullName">@file.Name</option>
+            }
+        </select>
     </div>
     <footer class="w3-row w3-padding">
         <div class="w3-col s6">
             <button class="w3-button w3-round error" @onclick=cancelNewMap>Cancel</button>
         </div>
         <div class="w3-col s6 w3-right-align">     
-            <div class="w3-right-align" style="overflow: hidden;">
+            @if (!string.IsNullOrEmpty(customMapName) && !string.IsNullOrEmpty(customMapBaseLayer)) {
                 <button class="w3-button w3-round ok" @onclick=saveNewMap>Confirm</button>
-            </div>
+            }
         </div>
     </footer>
 </Modal>
@@ -85,9 +92,11 @@
     private Modal newMapModal;
 
     private string customMapName;
+    private string customMapBaseLayer;
 
     private void newMap() {
         customMapName = null;
+        customMapBaseLayer = null;
         newMapModal?.SetVisibility(true);
     }
     private string addTh(int count) {
@@ -107,6 +116,9 @@
         this.newMapModal?.SetVisibility(false);
     }
     private void saveNewMap() {
+        if (string.IsNullOrEmpty(customMapBaseLayer))
+            return;
+
         var saveDir = Path.Combine(this.Directory, ".data", ".maps");
         System.IO.Directory.CreateDirectory(saveDir);
         var name = customMapName.Trim();
@@ -114,7 +126,11 @@
         var map = new Map{
             Name = name,
             SourceFile = new FileInfo(saveFile),
-            BaseLayers = new List<ImageLayer>(),
+            BaseLayers = new List<ImageLayer> {
+                new ImageLayer {
+                    ImagePath = Path.GetRelativePath(this.Directory, customMapBaseLayer)
+                }
+            },
             Features = new FeatureCollection()
         };
         System.IO.File.WriteAllText(saveFile, JsonSerializer.Serialize(map));

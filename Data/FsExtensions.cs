@@ -66,6 +66,11 @@ public static class FsExtensions {
         return directory.EnumerateFiles("*.*", SearchOption.AllDirectories).Where(file => file.IsJson());
     }
 
+    public static IEnumerable<FileInfo> GetImages(this DirectoryInfo directory) {
+        return directory.EnumerateFiles("*.*", SearchOption.AllDirectories).Where(file => file.IsImage());
+    }
+
+
     public static void ShowInExplorer(this FileInfo file) {
         if (System.Environment.OSVersion.Platform == PlatformID.Win32NT) {
             System.Diagnostics.Process.Start("explorer.exe", "/select, " + file.FullName);
