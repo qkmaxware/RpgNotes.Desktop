@@ -104,10 +104,8 @@
 
 <RpgNotes.Desktop.Shared.Popups.ExpressionBuilder @ref=exprBuilder OnSave=updateExpressionForGroup></RpgNotes.Desktop.Shared.Popups.ExpressionBuilder>
 
-<Sidebar @ref="featureDetailsSidebar" Style="z-index: 2;">
-    <div>
-        <button class="w3-button" @onclick=closeMarkerDetails>&times;</button>
-    </div>
+<Sidebar @ref="featureDetailsSidebar" OnClose=closeMarkerDetails>
+    <div style="margin-top: 48px;"></div>
     <TabView>
         <TabPage Title=Details>
             <hr>
@@ -327,6 +325,6 @@
     }
     private void closeMarkerDetails() {
         selectedVertex = null;
-        featureDetailsSidebar?.SetVisibility(false);
+        //featureDetailsSidebar?.SetVisibility(false);
     }
 }

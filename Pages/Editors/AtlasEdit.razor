@@ -99,10 +99,8 @@
 
 <ArticleLinkSearch @ref=articleLinkSearch OnArticleSelect=linkToFeature></ArticleLinkSearch>
 
-<Sidebar @ref="featureDetailsSidebar" Style="z-index: 2;">
-    <div>
-        <button class="w3-button" @onclick=closeMarkerDetails>&times;</button>
-    </div>
+<Sidebar @ref="featureDetailsSidebar" OnClose=closeMarkerDetails>
+    <div style="margin-top: 48px;"></div>
     <TabView>
         <TabPage Title=Details>
             <hr>
@@ -436,7 +434,7 @@
     }
     private void closeMarkerDetails() {
         selectedfeature = null;
-        featureDetailsSidebar?.SetVisibility(false);
+        //featureDetailsSidebar?.SetVisibility(false);
     }
 
     private string[] MarkerTypes = new string[] {

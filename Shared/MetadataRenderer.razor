@@ -1,0 +1,19 @@
+@if (Field.Value != null) {
+<label><b>@Field.Key</b></label>
+<div class=" w3-margin-left w3-right-align">
+    @if (Field.Value is IEnumerable<object> genericEnumerable) {
+        <span>@string.Join(", ", genericEnumerable)</span>
+    } else if (Field.Value is IEnumerable<KeyValuePair<string, object>> genericDictionary) {
+        foreach (var field in genericDictionary) {
+            <MetadataRenderer Field=@field></MetadataRenderer>
+        }
+    } else {
+        <span>@Field.Value.ToString()</span>
+    }
+</div>
+}
+
+@code {
+    [Parameter]
+    public KeyValuePair<string,object> Field {get; set;}
+}

@@ -1,6 +1,7 @@
 @page "/home/{HomeRef}/editors/render/{FileRef}"
 @inherits EditorBase;
 @inject NavigationManager nav;
+@using System.Collections
 @using System.IO
 @using System.Text.RegularExpressions
 @using System.Text.Json
@@ -9,6 +10,23 @@
 <Header>
 <button title="edit" class="w3-button w3-bar-item" style="float: right;" @onclick=edit><img src="static/images/edit.svg" height=20></button>
 </Header>
+@if (sidebar == null || !sidebar.isVisible) {
+<button class="w3-button header" style="position: fixed; right:  0; top: 52px; border-radius: 25% 0 0 25%; " @onclick=showInfo>
+    <img src="static/images/info.svg" height=20>
+</button>
+} 
+<Sidebar @ref=sidebar OnClose=hideInfo>
+    <div style="margin-top: 48px;"></div>
+    <div class="w3-container">
+        <h3>Metadata</h3>
+        <hr>
+        @if (metadata != null) {
+            @foreach (var kv in metadata) {
+                <MetadataRenderer Field=@kv></MetadataRenderer>
+            }
+        }
+    </div>
+</Sidebar>
 <article class="w3-container" style="padding-top: 40px;">
     @((MarkupString)rendered)
 </article>
@@ -22,6 +40,8 @@
     private DateTime textFetchedAtTime;
     public string text;
     public bool FileHasChanged => Exists && File.LastWriteTime > textFetchedAtTime;
+    private Sidebar sidebar;
+    private Dictionary<string,object> metadata;
 
     private string rendered;
 
@@ -43,6 +63,7 @@
         if (Exists) {
             this.textFetchedAtTime = DateTime.Now;
             var article = new Article(this.File);
+            this.metadata = article.FrontMatter();
             text = article.AutoLinkedContents(this.HomeDirectory);
         }
     }
@@ -50,6 +71,14 @@
     private void renderMarkdown() {
         if (this.text != null)
         this.rendered = md.Transform(this.text);
+    }
+
+    private void showInfo() {
+        this.sidebar?.SetVisibility(true);
+    }
+
+    private void hideInfo() {
+        // this.sidebar?.SetVisibility(false);
     }
 
     private static MarkdownSharp.Markdown md = new MarkdownSharp.Markdown(
