@@ -1,0 +1,244 @@
+@inject IJSRuntime js;
+@inherits EditorBase
+@page "/home/{HomeRef}/editors/schedule/{FileRef}"
+@using System.Text.Json
+@using System.IO
+@using System.Collections.Generic
+@inject NavigationManager nav
+
+@if (calendar != null && schedule != null) {
+<div class="w3-row">
+    <select class="w3-half w3-right-align" style="height: 3em;" @bind=selectedMonthName>
+        @foreach (var m in calendar.Months) {
+            <option>@m.FullName</option>
+        }
+    </select>
+    <input type="number" class="w3-half" placeholder="year" style="height: 3em;" @bind=selectedYear>
+</div>
+<div style="width: 100%;">
+    @if (selectedMonth != null) {
+        var days = selectedMonth.DatesInMonth(selectedYear).ToList();
+        var rows = (days.Count + selectedMonth.DaysPerWeek - 1) / selectedMonth.DaysPerWeek;
+        var width = 100.0 / selectedMonth.DaysPerWeek;
+        
+        for (var i = 0; i < rows; i++) {
+            <div class="w3-col">
+                @for (var j = 0; j < selectedMonth.DaysPerWeek; j++) {
+                    var index = i*selectedMonth.DaysPerWeek + j;
+                    @if(index < days.Count) {
+                        var day = days[index];
+                        <div class="w3-col" style="width: @(width)%;">
+                            <div class="w3-border w3-large w3-row">
+                                <div class="w3-col w3-right" style="width: 2em;">
+                                    @(index + 1)
+                                </div>
+                                <div class="w3-rest">
+                                    @day
+                                </div>
+                            </div>
+                            <ul class="w3-ul no-lines">
+                                @if (index >= 0 && index < this.articlesInMonth.Count) {
+                                    var articlesOnDay = this.articlesInMonth[index];
+                                    foreach (var article in articlesOnDay) {
+                                        <li class="ok button" style="margin: 2px;" @ondblclick=@(() => gotoArticle(article))>
+                                            @System.IO.Path.GetFileNameWithoutExtension(article.File.Name)
+                                        </li> 
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    }
+</div>
+} else {
+    <Error>
+        File is not a schedule, or schedule does not have an associated calendar
+    </Error>
+}
+
+@code {
+    private Calendar calendar;
+    private Schedule schedule;
+
+    private string selectedMonthName {
+        get => selectedMonth?.FullName;
+        set {
+            this.selectedMonth = calendar.Months.Where(month => month.FullName == value).FirstOrDefault();
+            refreshArticlesInMonth();
+        }
+    }
+    private Month selectedMonth;
+    private int selectedYear {
+        get => _year;
+        set {
+            _year = value;
+            refreshArticlesInMonth();
+        }
+    }
+    private int _year;
+    private List<string> daysInMonth => selectedMonth.DatesInMonth(selectedYear).ToList();
+
+    protected override void OnParametersSet () {
+        base.OnParametersSet ();
+        if (Exists) {
+            // Fetch schedule
+            try {
+                this.schedule = JsonSerializer.Deserialize<Schedule>(System.IO.File.ReadAllText(this.File.FullName));
+            } catch {
+                this.schedule = null;
+                return;
+            }
+
+            // Fetch calendar
+            refreshCalendars();
+            if (this.schedule != null && calendars != null) {
+                this.calendar = calendars.Where(c => c.Name == this.schedule.Calendar).FirstOrDefault();
+            }
+
+            // Fetch articles
+            refreshArticlesInSchedule();
+
+            // Fetch default month/year and get articles for that month
+            if (this.articlesInSchedule != null) {
+                var latest = this.articlesInSchedule.OrderByDescending(x => x.Key).FirstOrDefault();
+                if (latest.Value != null) {
+                    this._year = latest.Key.Year;
+                    this.selectedMonth = this.calendar.Months.ElementAtOrDefault(latest.Key.Month) ?? this.calendar.Months.FirstOrDefault();
+                } else {
+                    this._year = DateTime.Now.Year;
+                    if (this.calendar != null) {
+                        this.selectedMonth = this.calendar.Months.FirstOrDefault();
+                    }
+                }
+            } else {
+                this._year = DateTime.Now.Year;
+                if (this.calendar != null) {
+                    this.selectedMonth = this.calendar.Months.FirstOrDefault();
+                }
+            }
+            refreshArticlesInMonth();
+        }
+    }
+
+    private void gotoArticle(Article article) {
+        this.nav.NavigateTo(new PageInfo(
+            home: this.HomeRef,
+            editor: "editors/render",
+            path: article.File.FullName
+        ).Url);
+    }
+
+    private List<Calendar> calendars;
+    private void refreshCalendars() {
+        var dir = this.HomeDirectory;
+        if (dir.Exists) {
+            this.calendars = new List<Calendar>();
+            this.calendars.Add(GregorianCalendar.Instance);
+            foreach (var json in dir.GetJsonAssets()) {
+                try {
+                    var calendar = JsonSerializer.Deserialize<CustomCalendar>(System.IO.File.ReadAllText(json.FullName));
+                    if (calendar != null && calendar.MonthDefinitions.Count > 0) {
+                        calendar.Name = Path.GetFileNameWithoutExtension(json.Name);
+                        this.calendars.Add(calendar);
+                    }
+                } catch {}
+            }
+        }
+    }
+
+    private List<KeyValuePair<CalendarDate, Article>> articlesInSchedule;
+    private void refreshArticlesInSchedule() {
+        if (calendar == null || schedule == null)
+            return;
+        
+        var dir = this.HomeDirectory;
+        this.articlesInSchedule = new List<KeyValuePair<CalendarDate, Article>>();
+        if (dir.Exists) {
+            var files = dir.GetMarkdownArticles();
+            foreach (var file in files) {
+                // Console.WriteLine("Checking " + file.Name);
+                Article article = new Article(file);
+
+                // Parse front-matter
+                var tags = article.Tags().ToList();
+
+                // Validate tags
+                if (schedule.TagFilters == null || schedule.TagFilters.Count == 0) {
+                    // No filtering, continue onwards
+                    // Console.WriteLine("    No filtering on schedule");
+                } else {
+                    if (tags == null) {
+                        // Missing tags
+                        // Console.WriteLine("    Article has no tags");
+                        continue;
+                    } 
+                    var foundTagMatch = false;
+                    foreach (var tag in tags) {
+                        if (this.schedule.TagFilters.Contains(tag)) {
+                            foundTagMatch = true;
+                            break;
+                        }
+                    }
+                    if (foundTagMatch) {
+                        // Ok it has one of the tags
+                        // Console.WriteLine("    Found an article for this schedule");
+                    } else {
+                        // No tags matched
+                        // Console.WriteLine("    Article did not have any matching tags to schedule");
+                        continue;
+                    }
+                }
+
+                // Find date field
+                var front = article.FrontMatter();
+                if (front.ContainsKey(schedule.ArticleDateFieldName)) {
+                    // Has a date field
+                    var date_string = front[schedule.ArticleDateFieldName]?.ToString();
+                    if (string.IsNullOrEmpty(date_string)) {
+                        // No date field
+                        continue;
+                    }
+
+                    // Figure out if it is in the right month/year TODO
+                    CalendarDate date;
+                    if (this.calendar.TryParseDate(date_string, out date)) {
+                        // sort by the date
+                        // draw on the grid
+                        articlesInSchedule.Add(new KeyValuePair<CalendarDate, Article>(date, article));
+                    } else {
+                        // Date could not be parsed
+                        continue;
+                    }
+                } else {
+                    // Missing the date field, can't be plotted
+                    continue;
+                }
+            }
+        }
+    }
+    
+    private List<List<Article>> articlesInMonth;
+    private void refreshArticlesInMonth() {
+        var days = this.daysInMonth;
+        this.articlesInMonth = new List<List<Article>>(days.Count);
+        for (var i = 0; i < days.Count; i++) {
+            this.articlesInMonth.Add(new List<Article>());
+        }
+
+        if (this.articlesInSchedule == null)
+            return;
+
+        var months = this.calendar.Months.ToList();
+        foreach (var article in this.articlesInSchedule) {
+            if (article.Key.Year == selectedYear && article.Key.Month == months.IndexOf(selectedMonth)) {
+                var day = article.Key.DayInMonth;
+                if (day >= 0 && day < days.Count)
+                    articlesInMonth[article.Key.DayInMonth].Add(article.Value);
+            }
+        }
+    }
+
+}

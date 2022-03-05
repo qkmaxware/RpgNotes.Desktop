@@ -1,0 +1,150 @@
+@using System.IO
+
+<Modal @ref=modal>
+    <header class="w3-container">
+        <h3>Browse</h3>
+    </header>
+    <div class="w3-padding">
+        <div class="panel w3-round-xlarge w3-margin-bottom w3-padding">
+            <button class="w3-button w3-circle" style="padding: 2px 8px;" @onclick=updir>&#8612;</button> @CurrentDirectory.FullName
+        </div>
+    </div>
+    <div class="w3-row">
+        <div class="w3-quarter w3-padding">
+            <span style="padding-left: 1em;"><b>Volumes:</b></span>
+            <div>
+                <ul class="panel w3-ul w3-round-xlarge no-lines">
+                    @if (drives != null) {
+                        foreach (var drive in drives) {
+                            <li class="button" @onclick=@(() => SetDirectory(new DirectoryInfo(drive.Value)))>@drive.Key</li>
+                        } 
+                    }
+                </ul>
+            </div>
+            <span style="padding-left: 1em;"><b>System:</b></span>
+            <div>
+                <ul class="panel w3-ul w3-round-xlarge no-lines">
+                    @if (systemFolders != null) {
+                        foreach (var dir in systemFolders) {
+                            <li class="button" @onclick=@(() => SetDirectory(new DirectoryInfo(dir.Value)))>@dir.Key</li>
+                        } 
+                    }
+                </ul>
+            </div>
+        </div>
+        <div class="w3-threequarter w3-padding">
+            <span style="padding-left: 1em;"><b>Files:</b></span>
+            <ul class="panel w3-ul w3-round-xlarge no-lines" style="max-height: 48vh; overflow-y: auto;">
+                <li style="user-select: none;">&#128448; <b>.</b></li>
+                <li style="user-select: none;" @ondblclick=updir>&#128448; <b>..</b></li>
+                @foreach (var subdir in this.CurrentDirectory.GetDirectories()) {
+                    <li style="user-select: none;" @ondblclick=@(() => enterDir(subdir))>&#128448; <b>@subdir.Name</b></li>
+                }
+                @if (ShowFiles) {
+                foreach (var file in this.CurrentDirectory.GetFiles()) {
+                    var current = file;
+                    <li style="user-select: none;" class="@(SelectedFile == current ? "ok-text" : string.Empty)" @onclick=@(() => SelectedFile = current)>@file.Name</li>
+                }
+                }
+            </ul>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancel>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <div class="w3-right-align @(ShowFiles ? "panel" : string.Empty)" style="overflow: hidden;">
+                @if (ShowFiles && SelectedFile != null) {
+                    <span class="w3-margin-right">@SelectedFile.Name</span>
+                } else {
+                    <span>&nbsp;</span>
+                }
+                <button class="w3-button w3-round ok" @onclick=confirm>Confirm</button>
+            </div>
+        </div>
+    </footer>
+</Modal>
+@code {
+
+    [Parameter] public string StartingDirectory {get; set;}
+    [Parameter] public bool ShowFiles {get; set;} = true;
+    [Parameter] public bool RequireFile {get; set;} = true;
+    [Parameter] public Action OnCancel {get; set;}
+    [Parameter] public Action<DirectoryInfo, FileInfo> OnConfirm {get; set;}
+    private DirectoryInfo CurrentDirectory;
+    private FileInfo SelectedFile;
+
+    private Modal modal;
+
+    public void SetVisibility(bool isVisible) {
+        this.modal?.SetVisibility(isVisible);
+        StateHasChanged();
+    }
+    public void SetDirectory(DirectoryInfo info) {
+        if (info != null) {
+            this.CurrentDirectory = info;
+        }
+    }
+
+    protected override void OnInitialized() {
+        this.CurrentDirectory = string.IsNullOrEmpty(this.StartingDirectory) ? new DirectoryInfo(Environment.CurrentDirectory) : new DirectoryInfo(this.StartingDirectory);
+        RefreshSystemDirectories();
+        RefreshDrives();
+    }
+
+    private void enterDir(DirectoryInfo dir) {
+        this.SelectedFile = null;
+        this.CurrentDirectory = dir;
+    }
+
+    private void updir() {
+        var parent = CurrentDirectory.Parent;
+        if (parent != null) {
+            enterDir(parent);
+        }
+    }
+
+    private void confirm() {
+        FileInfo file = null;
+        if (RequireFile) {
+            file = this.SelectedFile;
+            if (file == null)
+                return; // Wait for a file to be selected
+        }
+        this.OnConfirm?.Invoke(this.CurrentDirectory, file);
+    }
+
+    private void cancel() {
+        this.OnCancel?.Invoke();
+    }
+
+    private Dictionary<string, string> systemFolders = new Dictionary<string, string>();
+    public void RefreshSystemDirectories() {
+        Environment.SpecialFolder[] dirs = new Environment.SpecialFolder[]{
+            Environment.SpecialFolder.UserProfile,
+            Environment.SpecialFolder.Desktop,
+            Environment.SpecialFolder.MyDocuments,
+            Environment.SpecialFolder.MyVideos,
+            Environment.SpecialFolder.MyPictures,
+            Environment.SpecialFolder.ApplicationData,
+        };
+        this.systemFolders = dirs.Select(dir => Environment.GetFolderPath(dir))
+            .Where(dir => !string.IsNullOrEmpty(dir))
+            .ToDictionary((dir) => Path.GetFileName(dir));
+    }
+
+    private Dictionary<string, string> drives = new Dictionary<string, string>();
+    public void RefreshDrives() {
+        drives.Clear();
+        try {
+            foreach(var drive in System.IO.DriveInfo.GetDrives()) {
+                try{
+                    var name = drive.Name + " " + drive.VolumeLabel;
+                    var path = drive.RootDirectory.FullName;
+                    drives.Add(name, path);
+                } catch {}
+            }
+        } catch {}
+    }
+}

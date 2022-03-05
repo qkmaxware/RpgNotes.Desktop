@@ -13,12 +13,9 @@ using RpgNotes.Desktop.Data;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 
-namespace RpgNotes.Desktop
-{
-    public class Startup
-    {
-        public Startup(IConfiguration configuration)
-        {
+namespace RpgNotes.Desktop {
+    public class Startup {
+        public Startup(IConfiguration configuration) {
             Configuration = configuration;
         }
 
@@ -26,8 +23,7 @@ namespace RpgNotes.Desktop
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
-        public void ConfigureServices(IServiceCollection services)
-        {
+        public void ConfigureServices(IServiceCollection services) {
             services.AddMvc(options => {
                 options.EnableEndpointRouting = false;
             });
@@ -35,20 +31,15 @@ namespace RpgNotes.Desktop
             services.AddServerSideBlazor();
             services.AddHttpContextAccessor();
 
-            services.AddSingleton<FileManager>();
-            services.AddSingleton<Notifier>();
-            services.AddSingleton<NavigationHistory>();
+            services.AddSingleton<AppData>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-        {
-            if (env.IsDevelopment())
-            {
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
+            if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
             }
-            else
-            {
+            else {
                 app.UseExceptionHandler("/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
@@ -72,15 +63,17 @@ namespace RpgNotes.Desktop
         }
         
         private async void BootstrapElectron() {
+            var display = await Electron.Screen.GetPrimaryDisplayAsync();
+            var dimensions = display.WorkAreaSize;
             var browserWindow = await Electron.WindowManager.CreateWindowAsync(new BrowserWindowOptions {
-                Width = 1152,
-                Height = 940,
+                Width = dimensions.Width,       // Start fullscreen
+                Height = dimensions.Height,     // Start fullscreen
                 Show = false,
             });
              
             #if DEBUG
             #else
-            browserWindow.RemoveMenu(); // Remove menu in published builds
+            browserWindow.RemoveMenu();         // Remove menu in published builds
             #endif
 
             await browserWindow.WebContents.Session.ClearCacheAsync();

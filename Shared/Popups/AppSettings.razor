@@ -1,0 +1,440 @@
+@using RpgNotes.Desktop.Shared.Layouts
+@using System.Text.RegularExpressions
+@using System.Reflection
+@using System.IO
+@inject AppData app
+
+<Modal @ref="modal">
+    <header class="w3-container w3-display-container">
+        <h3>Settings</h3>
+        <button class="w3-display-right w3-button" @onclick=Close>&times;</button>
+    </header>
+    <div class="w3-padding">
+        <TabView>
+            <TabPage Title="Appearance">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
+                    <Setting Title="Theme">
+                        <Summary>
+                            Themes change the overall appearance of the app.
+                        </Summary>
+                        <Control>
+                            <select class="w3-input" @bind=themePath>
+                                <option value="null">default</option>
+                                @foreach (var path in app.FetchThemes()) {
+                                <option value="@path.FullName">@System.IO.Path.GetFileNameWithoutExtension(path.Name)</option>
+                                }
+                            </select>
+                            <button class="w3-button w3-round panel w3-margin-top" style="width: 100%;" @onclick=openThemes>Open Theme Directory</button>
+                            <button class="w3-button w3-round panel w3-margin-top" style="width: 100%;" @onclick=createTheme>Create Theme</button>
+                        </Control>
+                    </Setting>
+                    <Setting Title="Custom CSS">
+                        <Summary>       
+                            Custom CSS to overload specific element styling.
+                        </Summary>
+                        <Control>
+                            <textarea class="w3-input panel" style="resize: vertical; min-height: 240px;" @bind=customCss></textarea>
+                        </Control>
+                    </Setting>
+                </div>
+            </TabPage>
+            <TabPage Title="History">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
+                    <Section Title="Recent Worlds">
+                        <Setting Title="Clear Recent Worlds">
+                            <Summary>
+                                Clear the recently opened worlds list.
+                            </Summary>
+                            <Control>
+                                <button class="w3-button error" @onclick=@(() => app.RecentlyOpened.Clear())>Clear</button>
+                            </Control>
+                        </Setting>
+                    </Section>
+                </div>
+            </TabPage>
+            <TabPage Title="Hotkeys">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
+                    <Section Title="Editor">
+                        @foreach (var hotkey in app.Config.Value.Hotkeys.Editor.GetType().GetProperties()) {
+                            <Setting>
+                                <Summary>@Regex.Replace(hotkey.Name, "[A-Z]", " $0")</Summary>
+                                <Control>
+                                    @{
+                                        var key = (Hotkey)hotkey.GetValue(app.Config.Value.Hotkeys.Editor);
+                                    }
+                                    <button class="w3-button w3-round-xlarge panel" @onclick=@(() => Rebind(key))>@(key?.ToString() ?? "none")</button>
+                                </Control>
+                            </Setting>
+                        }
+                    </Section>
+                </div>
+            </TabPage>
+            <TabPage Title="Plugins">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
+                    <Setting Title="Safe Mode">
+                        <Summary>
+                            Safe mode prevents plugins from being loaded. Reboot required after changing.
+                        </Summary>
+                        <Control>
+                            <button class="w3-button @(app.Config.Value.Extensions.SafeMode ? "disable" : "error")" @onclick=@(() => setSafeMode(false))>&times;</button><button class="w3-button @(app.Config.Value.Extensions.SafeMode ? "ok" : "disable")" @onclick=@(() => setSafeMode(true))>&check;</button>
+                        </Control>
+                    </Setting>
+                    <div class="w3-padding">
+                        <div>
+                            <b>Loaded Plugins</b>
+                        </div>
+                        @if(app.Extensions.Loaded != null && app.Extensions.Loaded.Count() > 0) {
+                        <ul class="w3-ul">
+                            @foreach (var plugin in app.Extensions.Loaded) {
+                                <li>
+                                    <b>@plugin.Value.Name</b> @plugin.Value.Version
+                                    <div>
+                                        @plugin.Value.Description
+                                        <div class="w3-right-align">
+                                            <button class="w3-button w3-small error" @onclick=@(() => { try{ plugin.Key.Delete(); } catch{} })>uninstall</button>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                        } else {
+                            <span>No plugins loaded.</span>
+                        }
+                    </div>
+                </div>
+            </TabPage>
+            <TabPage Title="About">
+                <div class="w3-padding header-border" style="max-height: @(maxHeight); overflow-y: auto; border-width: 1px; border-style: solid;">
+                    <Section Title="Updates">
+                        <Setting Title="Check for updates">
+                            <Summary>
+                            <table>
+                                <tr>
+                                    <td>Current Version</td><td>@current_version</td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(latest_version)) {
+                                <tr>
+                                    <td>Latest Version</td><td>@latest_version</td>
+                                </tr>
+                                }
+                            </table>
+                            </Summary>
+                            <Control>
+                                @if(needs_updating){
+                                    <a href="https://github.com/qkmaxware/RpgNotes.Desktop/releases" target="_blank" class="w3-button w3-round error" style="width: 12em;">Update</a>
+                                } else {
+                                    <button class="w3-button w3-round ok" style="width: 12em;" @onclick=checkVersion>Check Now</button>
+                                }
+                            </Control>
+                        </Setting>
+                    </Section>
+                    <Section Title="Help">
+                        <Setting Title="Documentation">
+                            <Summary>
+                            Read documentation or follow tutorials online.
+                            </Summary>
+                            <Control>
+                            <a href="https://github.com/qkmaxware/RpgNotes.Desktop/wiki" target="_blank" class="w3-button panel w3-round" style="width: 12em;">Online Wiki</a>
+                            </Control>
+                        </Setting>
+                        <Setting Title="Contribute">
+                            <Summary>
+                            Contribute to making this app even better.
+                            </Summary>
+                            <Control>
+                            <a href="https://github.com/qkmaxware/RpgNotes.Desktop" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">View Source</a><br>
+                            <a href="https://github.com/qkmaxware/RpgNotes.Desktop/issues" target="_blank" class="w3-button w3-round panel" style="width: 12em;">Report Issue</a><br>
+                            </Control>
+                        </Setting>
+                    </Section>
+                    <Section Title="Libraries & Licenses">
+                        <Setting Title="ElectronNET">
+                            <Summary>
+                                version 13.5.1
+                                <details style="white-space: pre;">
+                                    <summary>License</summary>
+MIT License
+
+Copyright (c) 2017 Gregor Biswanger, Robert Mühsig
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+                                </details>
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/ElectronNET/Electron.NET" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                            </Control>
+                        </Setting>
+                        <Setting Title="MarkdownSharp">
+                            <Summary>
+                                version 2.0.5
+                                <details style="white-space: pre;">
+                                    <summary>License</summary>
+The MIT License (MIT)
+
+Copyright (c) 2018 Stack Exchange
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+                                </details>
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/StackExchange/MarkdownSharp" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                            </Control>
+                        </Setting>
+                        <Setting Title="YamlDotNet">
+                            <Summary>
+                                version 11.2.1
+                                <details style="white-space: pre;">
+                                    <summary>License</summary>
+Copyright (c) 2008, 2009, 2010, 2011, 2012, 2013, 2014 Antoine Aubry and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+                                </details>
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/aaubry/YamlDotNet" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                            </Control>
+                        </Setting>
+                        <Setting Title="Qkmaxware.Namegen">
+                            <Summary>
+                                version 1.0.0
+                                <details style="white-space: pre;">
+                                    <summary>License</summary>
+MIT License
+
+Copyright (c) 2021 Colin Halseth
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+                                </details>
+                            </Summary>
+                            <Control>
+                                <a href="https://github.com/qkmaxware/RandomNameGenerators" target="_blank" class="w3-button w3-round panel w3-margin-bottom" style="width: 12em;">Website</a><br>
+                            </Control>
+                        </Setting>
+                    </Section>
+                </div>
+            </TabPage>
+        </TabView>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6"></div>
+        <div class="w3-col s6"></div>
+    </footer>
+</Modal>
+
+<Modal @ref="rebind">
+    <header class="w3-container w3-display-container w3-center">
+        <h3>Rebind</h3>
+    </header>
+    <div class="w3-padding">
+        <p>Select the area below and press any key to rebind. Press ESC to cancel.</p>
+        <div class="w3-padding w3-round-xxlarge panel w3-center w3-large" tabindex="0" @onkeydown=tryRebind @onkeydown:preventDefault>
+            <div class="w3-margin" style="user-select: none;">
+                Press Any Key...
+            </div>
+            <div style="user-select: none;">
+                @if (hotkeyToRebind != null) {
+                    <span>@hotkeyToRebind.ToString()</span>
+                }
+            </div>
+        </div>
+    </div>
+    <footer class="w3-center w3-padding">
+        <button class="w3-button ok" @onclick=stopRebinding>Update</button>
+    </footer>
+</Modal>
+
+@code {
+    private string maxHeight = "60vh";
+    Modal modal;
+    Modal rebind;
+
+    public void Open() {
+        this.modal?.SetVisibility(true);
+        this.rebind?.SetVisibility(false);
+    }   
+    public void Close() {
+        this.modal?.SetVisibility(false);
+        this.rebind?.SetVisibility(false);
+    }
+
+    private Hotkey hotkeyToRebind;
+    private void Rebind(Hotkey hotkey) {
+        hotkeyToRebind = hotkey;
+        if (hotkeyToRebind != null) {
+            this.rebind?.SetVisibility(true);
+        }
+    }
+    private void stopRebinding() {
+        this.hotkeyToRebind = null;
+        this.rebind?.SetVisibility(false);
+        app.Config.Save();
+    }
+    private void tryRebind(KeyboardEventArgs args) {
+        if (args.Key == "Escape") {
+            return;
+        }
+        if (hotkeyToRebind != null) {
+            hotkeyToRebind.Rebind(args);
+        }
+    }
+
+    delegate void RefAction<T>(ref T item);
+
+    #region Appearance 
+    private string themePath {
+        get => app.Config.Value.Appearance.ThemeCssPath;
+        set {
+            if (value == "null")
+                value = null;
+
+            updateConfig((ref AppConfig config) => {
+                var appearance = config.Appearance;
+                appearance.ThemeCssPath = value;
+                config.Appearance = appearance;
+            });
+        }
+    }
+    private string customCss {
+        get => app.Config.Value.Appearance.CustomCss;
+        set {
+            updateConfig((ref AppConfig config) => {
+                var appearance = config.Appearance;
+                appearance.CustomCss = value;
+                config.Appearance = appearance;
+            });
+        }
+    }
+    private void openThemes() {
+        new DirectoryInfo(app.AppThemeDirectory).ShowInExplorer();
+    }
+    private void createTheme() {
+        var fs = new System.IO.FileInfo(
+            System.IO.Path.Combine(app.AppThemeDirectory, "New Theme " + DateTime.Now.ToString("yyyy-MM-dd") + ".css")
+        );
+        using (var writer = new System.IO.StreamWriter(fs.FullName)) {
+            writer.Write(
+@":root {
+    --theme-font-colour:        white;
+    --theme-base:               #525252;
+    --theme-highlight-bright:   #7e7e7e;
+    --theme-highlight-error:    #ca3e47;
+    --theme-highlight-ok:       #317531;
+    --theme-panel:              #414141;
+    --theme-disabled:           #313131;
+    --theme-header:             #1a1a1a;
+}"
+);
+        }
+        fs.ShowInExplorer();
+    }
+    #endregion
+
+    #region About
+    private string current_version = typeof(AppSettings).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    private string latest_version = null;
+    private bool needs_updating = false;
+    private Regex regex = new Regex("\"tag_name\":\\s*\\\"v?([^\"]*)\\\"");
+    private async void checkVersion() {
+        latest_version = null;
+        needs_updating = false;
+
+        var owner = "qkmaxware";
+        var repo = "RpgNotes.Desktop";
+        var url = $"https://api.github.com/repos/{owner}/{repo}/releases";
+
+        try {
+            using (var client = new HttpClient()) {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible;)");
+                var result = await client.GetStringAsync(url);
+                latest_version = regex.Matches(result).Select((match) => match.Groups[1].Value).OrderByDescending(tag => tag).FirstOrDefault();
+                var compare = StringComparer.OrdinalIgnoreCase.Compare(current_version, latest_version);
+                needs_updating = compare < 0;
+            }
+        } catch (Exception e) {
+            Console.WriteLine(e);
+        }
+        StateHasChanged();
+    }
+    #endregion
+
+    private void updateConfig(RefAction<AppConfig> updater) {
+        // Get current config
+        var data = app.Config.Value;
+        // Do update
+        updater(ref data);
+        // Save config
+        app.Config.Value = data;
+    }
+
+    private void setSafeMode(bool isSafe) {
+        updateConfig((ref AppConfig config) => {
+            var exts = config.Extensions;
+            exts.SafeMode = isSafe;
+            config.Extensions = exts;
+        });
+    }
+}

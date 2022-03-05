@@ -1,0 +1,32 @@
+<Modal @ref=modal>
+    <header class="w3-container">
+        <h3>Filter Expression</h3>
+    </header>
+    <div class="w3-padding" style="max-height: 80vh; overflow-y: auto;">
+        @if (this.expression != null) {
+        <ExpressionBuilder_Expression Expression=@expression></ExpressionBuilder_Expression>
+        }
+    </div>
+    <footer class="w3-center w3-padding">
+        <button class="w3-button ok" @onclick=Close>Save & Close</button>
+    </footer>
+</Modal>
+
+@code {
+    Modal modal;
+    [Parameter] public Action<FilterExpression> OnSave {get; set;}
+
+    private FilterExpression expression;
+    public void Open(FilterExpression expression) {
+        this.expression = expression;
+        if (this.expression == null) {
+            this.expression = new FilterExpression() { Operator = FilterOperator.And };
+        }
+        this.modal?.SetVisibility(true);
+    }
+
+    public void Close() {
+        this.modal?.SetVisibility(false);
+        OnSave?.Invoke(this.expression);
+    }
+}

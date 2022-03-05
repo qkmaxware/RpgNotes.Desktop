@@ -1,0 +1,95 @@
+@using System.IO
+@using System.Timers
+@inject IJSRuntime js;
+
+<div id=autocomplete class="header w3-round-xlarge" @onmouseleave=hideLinkingScreen style="@(LinkScreenCss)position: fixed; bottom: 64px; left: 38px; right: 38px; min-height: 38px;">
+    @if (SearchDirectory != null) {
+    <ul class="w3-ul no-lines">
+        @if (this.potentialSearchArticles != null) {
+            foreach (var article in this.potentialSearchArticles) {
+                <li class="button" @onclick=@(() => linkArticle(article))>
+                    <b>@System.IO.Path.GetFileNameWithoutExtension(article.File.Name)</b><br>
+                    <span class="w3-small">@System.IO.Path.GetRelativePath(this.SearchDirectory.FullName, article.File.FullName)</span>
+                </li>
+            }
+        }
+    </ul>
+    }
+    <input @ref=articleLinkSearchBox class="w3-input" @bind=articleLinkSearchText @onkeyup=extraLinkActions @bind:event="oninput">
+</div>
+
+@code {
+    [Parameter] public Action<Article> OnArticleSelect {get; set;}
+    [Parameter] public Action OnCancel {get; set;}
+
+    private DirectoryInfo SearchDirectory = null;
+    public void BeginSearch(DirectoryInfo searchRoot) {
+        this.SearchDirectory = searchRoot;
+        showLinkingScreen();
+        StateHasChanged();
+    }
+    public void CancelSearch() {
+        hideLinkingScreen();
+        this.OnCancel?.Invoke();
+    }
+
+    private ElementReference articleLinkSearchBox;
+    private bool IsLinkScreenShown = false;
+    private string LinkScreenCss => IsLinkScreenShown ? string.Empty : "z-index: -999; opacity: 0;";
+    private void showLinkingScreen() {
+        IsLinkScreenShown = true;
+        _articleLinkSearchText = null;
+        potentialSearchArticles.Clear();
+        this.js.InvokeVoidAsync("RpgNotes.SetFocus", this.articleLinkSearchBox);
+    }
+    private void hideLinkingScreen() {
+        IsLinkScreenShown = false;
+    }
+    private string _articleLinkSearchText;
+    private string articleLinkSearchText {
+        get => _articleLinkSearchText;
+        set {
+            _articleLinkSearchText = value;
+            // Do search
+            debounceSearch();
+        }
+    }
+
+    private Timer debounceTimer;
+    private List<Article> potentialSearchArticles = new List<Article>();
+    private void doSearch(object sender, ElapsedEventArgs e) {
+        var search_string = this._articleLinkSearchText;
+        List<Article> results = new List<Article>();
+        if (search_string != null && search_string.Length > 0) {
+            foreach (var file in SearchDirectory.GetMarkdownArticles()) {
+                if (file.FullName.Contains(search_string, StringComparison.OrdinalIgnoreCase)) {
+                    results.Add(new Article(file));
+                }
+            }
+        }
+        potentialSearchArticles = results;
+        InvokeAsync(StateHasChanged);
+    }
+    private void debounceSearch() {
+        if (debounceTimer == null) {
+            debounceTimer = new Timer();
+            debounceTimer.AutoReset = false;
+            debounceTimer.Interval = TimeSpan.FromSeconds(0.5).TotalMilliseconds;
+            debounceTimer.Elapsed += doSearch;
+        }
+        debounceTimer.Stop();
+        debounceTimer.Start();
+    }
+
+    private void extraLinkActions(KeyboardEventArgs args) {
+        if (args.Key == "Escape") {
+            hideLinkingScreen();
+            this.OnCancel?.Invoke();
+        }
+    }
+
+    private void linkArticle(Article article) {
+        this.OnArticleSelect?.Invoke(article);
+        hideLinkingScreen();
+    }
+}

@@ -1,0 +1,543 @@
+@page "/home/{HomeRef}/editors/map/{FileRef}"
+@page "/home/{HomeRef}/editors/map/{FileRef}/relocate/{connToRelocate}"
+@page "/home/{HomeRef}/editors/map/{FileRef}/{x:int}/{y:int}"
+@using RpgNotes.Desktop.Shared.Layouts
+@using System.Text.Json
+@inherits EditorBase
+@inject IJSRuntime js;
+
+@if(Exists && map != null) {
+<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1">
+<div @ref=containerElement class="w3-display-container" style="position: relative; overflow: hidden; width: 100vw; height: 100vh; cursor: @(isAddingNew ? "copy" : "grab")"> 
+    @* Map Layers *@
+    <div @ref=mapElement style="position: absolute;" @onclick=onClickMap>
+        @if (map.BaseLayers != null) {
+            foreach(var layer in map.BaseLayers) {
+                if (layer.ImagePath != null) {
+                    <img draggable="false" src="api/files/getFromReference/@(System.IO.Path.Combine(this.HomeDirectory.FullName, layer.ImagePath).EncodeBase64())">
+                }
+            }
+        }
+        @if (map.OverlayGrid != null) {
+            <div class="grid" style="margin: @(map.OverlayGrid.OffsetY)px 0 0 @(map.OverlayGrid.OffsetY); background-size: @(map.OverlayGrid.CellWidth)px @(map.OverlayGrid.CellHeight)px"></div>
+        }
+        @if (map.Features != null) {
+            <svg style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
+                @if (map.Features.Polygons != null) {
+                    foreach (var poly in map.Features.Polygons) {
+                        <polygon points="@string.Join(',', poly.Vertices)" style="fill:@(poly.Fill ?? "red");fill-opacity:@(poly.Opacity);cursor: pointer;" @onclick=@(() => onClickArea(poly))></polygon>
+                    }
+                }
+                @if (map.Features.Lines != null) {
+                    foreach (var line in map.Features.Lines) {
+                        <line x1="@line.X1" y1="@line.Y1" x2="@line.X2" y2="@line.Y2" style="stroke-width:2px;stroke:@(line.Stroke ?? "red");cursor: pointer;" @onclick=@(() => onClickLine(line))></line>
+                    }
+                }
+            </svg>
+            if (map.Features.Points != null) {
+                foreach (var point in map.Features.Points) {
+                    <img draggable="false" @onclick=@(() => onClickMarker(point)) src="@point.MarkerUrl" style="cursor: pointer;height: @(MarkerSizePx)px; width: auto; position: absolute; top: @(point.Y - MarkerSizePx)px; left:@(point.X - MarkerSizePx/2)px;">
+                }
+            }
+        }
+        @if (featureWizard != null) {
+            System.Tuple<float,float> lastPoint = null;
+            <svg style="position: absolute; left: 0; top: 0; width: 100%; height: 100%" class="draw">
+                @foreach (var point in featureWizard.Enumerate()) {
+                    <circle cx="@point.Item1" cy="@point.Item2" r="6px" class="point"></circle>
+                    if (lastPoint != null) {
+                        <line x1="@lastPoint.Item1" y1="@lastPoint.Item2" x2="@point.Item1" y2="@point.Item2" class="line"></line>
+                    }
+                    lastPoint = point;
+                }
+            </svg>
+        }
+    </div>
+    @* UI Elements *@
+    @*
+    <div class="w3-display-topright w3-padding" style="margin-top: @(topMarginPx)px;">
+        <button class="w3-button w3-round error" @onclick=gotoArticle>&#8249; Go to @article.Name</button>
+    </div>
+    *@
+    <div class="w3-display-topmiddle" style="margin-top: @(topMarginPx)px;">
+        @if (Relocate != null) {
+            <div class="w3-large bright w3-round">
+                <span class="w3-padding">
+                    Click anywhere to move marker to the new location
+                </span>
+            </div>
+        }
+        @if(isAddingNew) {
+            <div class="w3-large bright w3-round">
+                <button class="w3-button w3-round error" @onclick=cancelNew>&times;</button>
+                <span class="w3-padding">
+                    Click anywhere to add point
+                </span>
+                @if (featureWizard != null && featureWizard.AutoComplete == false && featureWizard.CanBeCompleted()) {
+                    <button class="w3-button w3-round ok" @onclick=confirmNew>&checkmark;</button>
+                }
+            </div>
+        }
+    </div>
+</div>
+</div>
+<Header>
+    <button class="w3-button w3-bar-item" @onclick=reset>&#8635;</button>
+    <button class="w3-button w3-bar-item" @onclick=zoomIn>+</button>
+    <button class="w3-button w3-bar-item" @onclick=zoomOut>-</button>
+    <span   class="w3-bar-item error-text">|</span>
+    <button class="w3-button w3-bar-item" @onclick=newPoint><img src="static/images/newPoint.svg" height=20></button>
+    <button class="w3-button w3-bar-item" @onclick=newLine><img src="static/images/newLine.svg" height=20></button>
+    <button class="w3-button w3-bar-item" @onclick=newPolygon><img src="static/images/newPolygon.svg" height=20></button>
+    <button class="w3-button w3-bar-item" @onclick=saveMapAfterEdit>save</button>
+</Header>
+} else {
+<Error>
+    File '@(File)' does not exist.
+</Error>
+}
+
+<ArticleLinkSearch @ref=articleLinkSearch OnArticleSelect=linkToFeature></ArticleLinkSearch>
+
+<Sidebar @ref="featureDetailsSidebar" OnClose=closeMarkerDetails>
+    <div style="margin-top: 48px;"></div>
+    <TabView>
+        <TabPage Title=Details>
+            <hr>
+            <div class="w3-padding">
+                <MarkdownRender @ref=articleDetailRenderer></MarkdownRender>
+            </div>
+        </TabPage>
+        <TabPage Title=Marker>
+            <hr>
+            <div class="w3-padding">
+                @if (selectedfeature != null && selectedfeature is PointFeature point) {
+                    <div class="w3-border-bottom w3-margin-bottom w3-large">
+                        Coordinates
+                    </div>
+                    <div class="w3-padding">
+                        <div class="w3-margin-bottom">
+                            <div class="w3-row">
+                                <div class="w3-col" style="width: 4em">
+                                    <input type="text" class="header" readonly value="X">
+                                </div>
+                                <div class="w3-rest">
+                                    <input type="number" @bind=point.X placeholder="X Coordinate" class="w3-input darker">
+                                </div>
+                            </div>
+                            <div class="w3-row">
+                                <div class="w3-col" style="width: 4em">
+                                    <input type="text" class="header" readonly value="Y">
+                                </div>
+                                <div class="w3-rest">
+                                    <input type="number" @bind=point.Y placeholder="Y Coordinate" class="w3-input darker">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w3-right-align">
+                            <button class="w3-button ok" @onclick=relocate>
+                                <img src="static/images/markers/gps_white.svg" width=20 height=20> Move
+                            </button>
+                        </div>
+                    </div>
+                    <div class="w3-border-bottom w3-margin-bottom w3-large">
+                        Symbology
+                    </div>
+                    <div class="w3-padding">
+                        @foreach (var type in MarkerTypes) {
+                            <div style="padding: 8px; display: inline-block;" class="@(type == point.MarkerUrl ? "error" : string.Empty)" @onclick=@(() => point.MarkerUrl = type)>
+                                <img src="@type" width=32 height=32>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (selectedfeature != null && selectedfeature is LineFeature line) {
+                    <div class="w3-border-bottom w3-margin-bottom w3-large">
+                        Coordinates
+                    </div>
+                    <div class="w3-padding">
+                        <div class="w3-margin-bottom">
+                            <div class="w3-row">
+                                <div class="w3-half">
+                                    <div class="w3-row">
+                                        <div class="w3-col" style="width: 4em">
+                                            <input type="text" class="header" readonly value="X1">
+                                        </div>
+                                        <div class="w3-rest">
+                                            <input type="number" @bind=line.X1 placeholder="1st X Coordinate" class="w3-input darker">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w3-half">
+                                    <div class="w3-row">
+                                        <div class="w3-col" style="width: 4em">
+                                            <input type="text" class="header" readonly value="Y1">
+                                        </div>
+                                        <div class="w3-rest">
+                                            <input type="number" @bind=line.Y1 placeholder="1st Y Coordinate" class="w3-input darker">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w3-row">
+                                <div class="w3-half">
+                                    <div class="w3-row">
+                                        <div class="w3-col" style="width: 4em">
+                                            <input type="text" class="header" readonly value="X2">
+                                        </div>
+                                        <div class="w3-rest">
+                                            <input type="number" @bind=line.X2 placeholder="2nd X Coordinate" class="w3-input darker">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w3-half">
+                                    <div class="w3-row">
+                                        <div class="w3-col" style="width: 4em">
+                                            <input type="text" class="header" readonly value="Y2">
+                                        </div>
+                                        <div class="w3-rest">
+                                            <input type="number" @bind=line.Y2 placeholder="2nd Y Coordinate" class="w3-input darker">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w3-border-bottom w3-margin-bottom w3-large">
+                        Symbology
+                    </div>
+                    <div class="w3-padding">
+                        <div class="w3-row">
+                            <div class="w3-col" style="width: 7em">
+                                <input type="text" class="header" readonly value="Stroke">
+                            </div>
+                            <div class="w3-rest">
+                               <input type="color" class="w3-input" @bind=line.Stroke style="height: 2.6em">
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (selectedfeature != null && selectedfeature is PolygonFeature poly) {
+                    <div class="w3-border-bottom w3-margin-bottom w3-large">
+                        Coordinates
+                    </div>
+                    <div class="w3-padding">
+                        <div class="w3-margin-bottom">
+                            @if (poly.Vertices != null) {
+                                foreach (var vertex in poly.Vertices) {
+                                    var current = vertex;
+                                    <div class="w3-row">
+                                        <div class="w3-half">
+                                            <div class="w3-row">
+                                                <div class="w3-col" style="width: 4em">
+                                                    <input type="text" class="header" readonly value="X">
+                                                </div>
+                                                <div class="w3-rest">
+                                                    <input type="number" @bind=current.X placeholder="X Coordinate" class="w3-input darker">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="w3-half">
+                                            <div class="w3-row">
+                                                <div class="w3-col" style="width: 4em">
+                                                    <input type="text" class="header" readonly value="Y">
+                                                </div>
+                                                <div class="w3-rest">
+                                                    <input type="number" @bind=current.Y placeholder="Y Coordinate" class="w3-input darker">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="w3-border-bottom w3-margin-bottom w3-large">
+                        Symbology
+                    </div>
+                    <div class="w3-padding">
+                        <div class="w3-row">
+                            <div class="w3-col" style="width: 7em">
+                                <input type="text" class="header" readonly value="Fill">
+                            </div>
+                            <div class="w3-rest">
+                               <input type="color" class="w3-input" @bind=poly.Fill style="height: 2.6em">
+                            </div>
+                        </div>
+                        <div class="w3-row">
+                            <div class="w3-col" style="width: 7em">
+                                <input type="text" class="header" readonly value="Opacity">
+                            </div>
+                            <div class="w3-rest">
+                               <input type="number" class="w3-input" @bind=poly.Opacity>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <div class="w3-border-bottom w3-margin-top w3-large">
+                    Utilities
+                </div>
+                <div class="w3-padding w3-right-align">
+                    <button class="w3-button error" @onclick=@(() => deleteFeature(this.selectedfeature))>
+                        &times; Delete
+                    </button>
+                </div>
+            </div>
+        </TabPage>
+    </TabView>
+</Sidebar>
+
+<RpgNotes.Desktop.Shared.Popups.DeletePopup @ref=deletePopup></RpgNotes.Desktop.Shared.Popups.DeletePopup>
+
+@code {
+    [Parameter] public int? x {get; set;}
+    [Parameter] public int? y {get; set;}
+    [Parameter] public string connToRelocate {get; set;}
+
+    private ArticleLinkSearch articleLinkSearch;
+    private Sidebar featureDetailsSidebar;
+    private MarkdownRender articleDetailRenderer;
+
+    private static int MarkerSizePx = 32;
+    private static int topMarginPx = 46;
+    private PointFeature Relocate; // point to relocate
+
+    private ElementReference containerElement;
+    private ElementReference mapElement;    
+    private Map map;
+
+    protected override void OnParametersSet () {
+        base.OnParametersSet();
+        if (Exists) {
+            try {
+                this.map = JsonSerializer.Deserialize<Map>(System.IO.File.ReadAllText(this.File.FullName));
+                
+                if (connToRelocate != null) {
+                    relocate(this.map.Features.Points.Where(point => point.Name == connToRelocate).FirstOrDefault());
+                }
+            } catch {}
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if (firstRender) {
+            try {
+                await js.InvokeVoidAsync("RpgNotes.Map.Setup", this.containerElement, this.mapElement);
+                if (x.HasValue && y.HasValue) {
+                    // Pan to that location
+                    await js.InvokeVoidAsync("RpgNotes.Map.Center", x.Value, y.Value);
+                }   
+            } catch {}    
+        }
+    }
+
+    private void saveMapAfterEdit() {
+        if (map != null && File != null) {
+            System.IO.File.WriteAllText(this.File.FullName, JsonSerializer.Serialize<Map>(this.map));
+        }
+    }
+
+    private string getArticleUrl(Article article) {
+        return $"home/{HomeRef}/" + "editors/render/" + article.File.FullName.EncodeBase64();
+    }
+
+    #region Map Navigation
+    private async void zoomIn() {
+        await js.InvokeVoidAsync("RpgNotes.Map.ZoomIn");
+    }
+    private async void zoomOut() {
+        await js.InvokeVoidAsync("RpgNotes.Map.ZoomOut");
+    }
+    private async void reset() {
+        await js.InvokeVoidAsync("RpgNotes.Map.SetZoom", 1);
+        await js.InvokeVoidAsync("RpgNotes.Map.PanTo", 0, 0);
+    }
+    private class point {
+        public int x {get; set;}
+        public int y {get; set;}
+    }
+    #endregion
+
+    private async void onClickMap(MouseEventArgs e) {
+        // Point relocating
+        if (Relocate != null) {
+            var p = Relocate;
+            var location = await js.InvokeAsync<point>("RpgNotes.Map.MousePosition", e.ClientX, e.ClientY);
+
+            p.X = location.x;
+            p.Y = location.y;
+            Relocate = null;
+
+            // We are done relocating this connection
+            StateHasChanged();
+        }
+
+        // Feature creation
+        if (isAddingNew && featureWizard.CanAddPoint()) {
+            var location = await js.InvokeAsync<point>("RpgNotes.Map.MousePosition", e.ClientX, e.ClientY);
+            featureWizard.AddPointToFeature(location.x, location.y);
+
+            if (featureWizard.AutoComplete && featureWizard.CanBeCompleted()) {
+                confirmNew();
+            }
+            StateHasChanged();
+        }
+    }
+
+    private RpgNotes.Desktop.Shared.Popups.DeletePopup deletePopup;
+    private void deleteFeature(Feature feature) {
+        if (feature == null)
+            return;
+
+        if (map.Features != null) {
+            deletePopup?.Delete(feature.Name, () => {
+                map.Features.Remove(feature);
+                StateHasChanged();
+            });
+            closeMarkerDetails();
+        }
+    }
+    
+
+    private Feature selectedfeature;
+    private void onClickMarker(PointFeature point) {
+        onClickFeature(point);
+    }
+    private void onClickLine(LineFeature line) {
+        onClickFeature(line);
+    }
+    private void onClickArea(PolygonFeature poly) {
+        onClickFeature(poly);
+    }
+    private void onClickFeature(Feature conn) {
+        if (conn == null)
+            return;
+
+        if (!string.IsNullOrEmpty(conn.LinkedArticle)) {
+            var article = new Article(
+                new System.IO.FileInfo(
+                    System.IO.Path.Combine(this.HomeDirectory.FullName, conn.LinkedArticle)
+                )
+            );
+            
+            if (article.File.Exists) {
+                articleDetailRenderer?.Render(article.AutoLinkedContents(this.HomeDirectory));
+            } else {
+                articleDetailRenderer?.Render(string.Empty);
+            }
+        } else {
+            articleDetailRenderer?.Render(string.Empty);
+        }
+
+        selectedfeature = conn;
+        featureDetailsSidebar?.SetVisibility(true);
+    }
+    private void closeMarkerDetails() {
+        selectedfeature = null;
+        //featureDetailsSidebar?.SetVisibility(false);
+    }
+
+    private string[] MarkerTypes = new string[] {
+        "static/images/markers/gps.svg",
+        "static/images/markers/gps_white.svg",
+        
+        "static/images/markers/circle.svg",
+        "static/images/markers/major_circle.svg",
+        "static/images/markers/capital_circle.svg",
+        "static/images/markers/triangle.svg",
+        "static/images/markers/square.svg",
+
+        "static/images/markers/campsite.svg",
+        "static/images/markers/castle.svg",
+        "static/images/markers/church.svg",
+        "static/images/markers/hospital.svg",
+        "static/images/markers/forge.svg",
+        "static/images/markers/sword.svg",
+        "static/images/markers/gem.svg",
+        "static/images/markers/pub.svg",
+        "static/images/markers/food.svg",
+        "static/images/markers/dice.svg",
+
+        "static/images/markers/fishing.svg",
+        "static/images/markers/forestry.svg",
+        "static/images/markers/mountain.svg",
+        "static/images/markers/cave.svg",
+        "static/images/markers/ranch.svg",
+        "static/images/markers/garden.svg",
+        "static/images/markers/xswords.svg",
+
+        "static/images/markers/coin.svg",
+        "static/images/markers/danger.svg",
+        "static/images/markers/goal.svg",
+        "static/images/markers/info.svg",
+    };
+
+    private void relocate() {
+        if(this.selectedfeature is PointFeature point)
+            relocate(point);
+    }
+    private void relocate(PointFeature conn) {
+        if (conn == null)
+            return;
+        this.Relocate = conn;
+        this.featureDetailsSidebar?.SetVisibility(false);
+    }
+
+    #region Add
+    private bool isAddingNew => featureWizard != null;
+    private FeatureCreationWizard featureWizard;
+    private void cancelNew() {
+        featureWizard = null;
+    }
+    private void confirmNew() {
+        if (map != null) {
+            if (map.Features == null)
+                map.Features = new FeatureCollection();
+            var feature = featureWizard.CreateFeature();
+            featureWizard = null;
+
+            if (feature is PointFeature point) {
+                if (map.Features.Points == null)
+                    map.Features.Points = new List<PointFeature>();
+                point.MarkerUrl = MarkerTypes[0];
+                map.Features.Points.Add(point);
+            } else if (feature is LineFeature line) {
+                if (map.Features.Lines == null)
+                    map.Features.Lines = new List<LineFeature>();
+                map.Features.Lines.Add(line);
+            } else if (feature is PolygonFeature poly) {
+                if (map.Features.Polygons == null)
+                    map.Features.Polygons = new List<PolygonFeature>();
+                map.Features.Polygons.Add(poly);
+            }
+
+            linkArticle(feature);
+        }
+    }
+    private void newPoint() {
+        featureWizard = new PointFeatureWizard();
+    }
+
+    private void newLine() {
+        featureWizard = new LineFeatureWizard();
+    }
+
+    private void newPolygon() {
+        featureWizard = new PolygonFeatureWizard();
+    }
+
+    private Feature featureToLink;
+    private void linkArticle(Feature feature) {
+        this.featureToLink = feature;
+        this.articleLinkSearch?.BeginSearch(this.HomeDirectory);
+    }
+    private void linkToFeature(Article article) {
+        if (featureToLink != null) {
+            var path = System.IO.Path.GetRelativePath(this.HomeDirectory.FullName, article.File.FullName);
+            featureToLink.LinkedArticle = path;
+            featureToLink.Name = System.IO.Path.GetFileNameWithoutExtension(article.File.FullName);
+        }
+    }
+    #endregion
+
+}

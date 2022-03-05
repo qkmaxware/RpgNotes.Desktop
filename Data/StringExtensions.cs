@@ -1,26 +1,12 @@
-using System.Text;
+using System.Net;
 
-namespace RpgNotes.Desktop.Data {
+namespace RpgNotes {
 
 public static class StringExtensions {
 
-    public static string UnPascalCase(this string text) {
-        if (string.IsNullOrWhiteSpace(text))
-            return "";
-        var newText = new StringBuilder(text.Length * 2);
-        newText.Append(text[0]);
-        for (int i = 1; i < text.Length; i++) {
-            var currentUpper = char.IsUpper(text[i]);
-            var prevUpper = char.IsUpper(text[i - 1]);
-            var nextUpper = (text.Length > i + 1) ? char.IsUpper(text[i + 1]) || char.IsWhiteSpace(text[i + 1]): prevUpper;
-            var spaceExists = char.IsWhiteSpace(text[i - 1]);
-            if (currentUpper && !spaceExists && (!nextUpper || !prevUpper))
-                    newText.Append(' ');
-            newText.Append(text[i]);
-        }
-        return newText.ToString();
-    }
-
+    public static string UrlEncode(this string str) => WebUtility.UrlEncode(str);
+    public static string EncodeBase64(this string str) => System.Convert.ToBase64String(System.Text.UTF8Encoding.Unicode.GetBytes(str));
+    public static string DecodeBase64(this string str) => System.Text.UTF8Encoding.Unicode.GetString(System.Convert.FromBase64String(str));
 }
 
 }

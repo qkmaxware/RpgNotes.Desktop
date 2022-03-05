@@ -1,0 +1,18 @@
+<div class="w3-center w3-container">
+    <h1>Error</h1>
+    <p class="w3-padding">
+        @ChildContent
+    </p>
+    <div class="w3-container w3-small w3-left">
+        @if(Exception != null) {
+            <p>
+                @Exception
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent {get; set;}
+    [Parameter] public Exception Exception {get; set;}
+}

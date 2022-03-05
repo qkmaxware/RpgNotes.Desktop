@@ -1,11 +1,9 @@
-@if (Parent != null && Parent.IsCurrentPage(this)) {
-    <div>
-        @ChildContent
-    </div>
-}
+<div class="@(Parent != null && Parent.IsCurrentPage(this) ? "w3-show" : "w3-hide")" style="height: 100%;">
+    @ChildContent
+</div>
 
 @code {
-    [CascadingParameter] TabPanel Parent {get; set;}
+    [CascadingParameter] TabView Parent {get; set;}
     [Parameter] public Func<string> TitleFunc {get; set;}
     [Parameter] public string Title {
         get => TitleFunc?.Invoke() ?? string.Empty;

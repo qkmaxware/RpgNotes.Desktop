@@ -1,0 +1,88 @@
+@inject AppData app;
+@using System.IO
+
+<Modal @ref=modal>
+    <header class="w3-container">
+        <h3>Create</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Filename</h4>
+        <div class="w3-right-align">
+            <input type="text" class="w3-input w3-round" @bind=filename>
+            <RandomNameGenerator OnGetName=@((name) => Suggest(name))></RandomNameGenerator>    
+        </div>
+        <h4>Template</h4>
+        <div class="w3-row" style="max-height: 40vh; overflow-y: auto;">
+            <ul class="w3-ul"> 
+                @if(app.Extensions != null && app.Extensions.ArticleTemplates != null) {
+                    foreach (var template in app.Extensions.ArticleTemplates) {
+                        <li class="button w3-padding-hor-16 @(template == this.selectedTemplate ? "ok" : string.Empty)" @onclick=@(() => this.selectedTemplate = template)>
+                            <img src="@template.IconUrl" class="w3-left" style="width:32px; padding: 4px; height:auto;">
+                            <span><b>@template.Name</b></span><br>
+                            <span>@template.Description</span>
+                            <span class="w3-right tree-caret @(template == this.selectedTemplate ? "tree-caret-expanded" : string.Empty)"></span>
+                            @if (template == this.selectedTemplate && this.selectedTemplate.Options != null) {
+                                var type = this.selectedTemplate.Options.GetType();
+                                <div class="w3-border-top w3-margin-left w3-right-align" style="padding-top: 16px;">
+                                    @foreach (var prop in type.GetProperties()) {
+                                        <label>@prop.Name</label>
+                                        <PropertyEditor Object=@this.selectedTemplate.Options Property=@prop></PropertyEditor>
+                                    }
+                                </div>
+                            }
+                        </li>
+                    }
+                }
+            </ul>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancel>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <button class="w3-button w3-round ok" @onclick=confirm>Confirm</button>
+        </div>
+    </footer>
+</Modal>
+
+@code {
+    private string filename;
+
+    private Modal modal;
+    private DirectoryInfo parent;
+    private Template selectedTemplate;
+
+    public void Open(DirectoryInfo parent, string defaultFilename) {
+        this.parent = parent;
+        this.filename = defaultFilename;
+        this.selectedTemplate = null;
+        modal?.SetVisibility(true);
+        StateHasChanged();
+    }
+
+    public void Suggest(string filename) {
+        // Make name unique
+        var baseFilename = filename;
+        var realfilename = baseFilename;
+        var index = 0;
+        var files = parent.GetFiles().Select(file => file.Name).Concat(parent.GetDirectories().Select(dir => dir.Name)).ToList();
+        while (files.Contains(realfilename + ".md")) {
+            realfilename = baseFilename + " " + (++index);
+        }
+        this.filename = realfilename;
+        StateHasChanged();
+    }
+
+    private void confirm() {
+        using (var writer = new StreamWriter(Path.Combine(this.parent.FullName, filename + ".md"))) {
+            if (this.selectedTemplate != null) {
+                writer.WriteLine(this.selectedTemplate.Markdown());
+            }
+        }
+        modal?.SetVisibility(false);
+    }
+    private void cancel() {
+        modal?.SetVisibility(false);
+    }
+}

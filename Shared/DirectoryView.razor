@@ -1,0 +1,32 @@
+@using System.IO;
+
+@if (Directory.Exists) {
+<li style="list-style-type: none;">
+    <div class="button tree-caret @(Expanded ? "tree-caret-expanded" : string.Empty)" @onclick=toggleExpand @oncontextmenu=openContextMenu @oncontextmenu:preventDefault="true">@Directory.Name</div>
+    <ul class="@(Expanded ? "tree-expanded" : "tree-collapse")" style="list-style-type: none; margin-block-start: 0; padding-inline-start: 2em;">
+        @foreach (var subDir in Directory.GetDirectories()) {
+            <DirectoryView Directory=@subDir></DirectoryView>
+        }
+        @foreach (var file in Directory.GetFiles().Where(file => Explorer?.Filter == null || Explorer.Filter.IsMatch(file.Name))) {
+            <FileView File=@file></FileView>
+        }
+    </ul>
+</li>
+}
+
+@code {
+    [CascadingParameter] public DirectoryExplorer Explorer {get; set;}
+    [Parameter] public DirectoryInfo Directory {get; set;}
+    [Parameter] public bool Expanded {get; set;}
+
+    private void toggleExpand() {
+        this.Expanded = !this.Expanded;
+    }
+
+    private void openContextMenu(MouseEventArgs args) {
+        if (args.Button == 2 && Explorer != null) {
+            Explorer.OpenFileContext(args, this.Directory);
+        }
+    }
+
+}

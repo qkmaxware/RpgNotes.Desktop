@@ -1,5 +1,7 @@
 ﻿@page "/"
+@inject RpgNotes.Desktop.Data.AppData app
 @namespace RpgNotes.Desktop.Pages
+@using Microsoft.AspNetCore.Components
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
     Layout = null;
@@ -13,6 +15,17 @@
     <title>RpgNotes.Desktop</title>
     <base href="~/" />
     <link rel="stylesheet" href="css/w3.css" />
+    @* CSS Conflict Resolution says the one loaded last wins. IE use default theme, then use user selected theme, then use custom css overloads *@
+    @if (!string.IsNullOrEmpty(app.Config.Value.Appearance.ThemeCssPath)) {
+    <link href="api/files/getFromReference/@(app.Config.Value.Appearance.ThemeCssPath.EncodeBase64())" rel="stylesheet" />
+    } else {
+    <link href="css/default.theme.css" rel="stylesheet" />
+    }
+    @if (!string.IsNullOrEmpty(app.Config.Value.Appearance.CustomCss)) {
+    <style>
+    @((MarkupString)app.Config.Value.Appearance.CustomCss)
+    </style>
+    }
     <link href="css/app.css" rel="stylesheet" />
     <link href="RpgNotes.Desktop.styles.css" rel="stylesheet" />
     <script src="js/helpers.js"></script>

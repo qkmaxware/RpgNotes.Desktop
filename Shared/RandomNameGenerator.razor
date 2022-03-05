@@ -1,6 +1,11 @@
 @using Qkmaxware.Namegen
 
-<div>
+<div class="">
+    <button class="w3-button" @onclick=@(() => isVisible = !isVisible)>
+        <img src="static/images/random.svg" style="width: 24px;">
+    </button>
+</div>
+<div class="@(isVisible ? "w3-show" : "w3-hide")">
     @foreach (var generator in Generators) {
         <button class="w3-button" @onclick=@(() => select(generator))>
             @generator.GetType().Name.Replace("NameGenerator", string.Empty)
@@ -32,4 +37,5 @@
         }
     }
     
+    private bool isVisible = false;
 }

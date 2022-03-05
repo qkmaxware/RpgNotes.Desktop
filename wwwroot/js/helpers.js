@@ -8,7 +8,17 @@ window.RpgNotes = (function(){
             await navigator.clipboard.writeText(input);
         }
     }
-    
+
+    /**
+     * Sets the browser focus to the given element
+     * @param {Element} el 
+     */
+    function SetFocus(el) {
+        if (el.focus) {
+            el.focus();
+        }
+    }
+
     /**
      * Get the start of a selection in an input box
      * @param {input | textarea} input 
@@ -25,6 +35,72 @@ window.RpgNotes = (function(){
      */
     function GetSelectionEnd(input) {
         return input.selectionEnd;
+    }
+
+    /**
+     * Insert text at the begining of a selector
+     * @param {Input Element} el 
+     * @param {string} newText
+     */
+    function InsertAtCursor(el, newText) {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const text = el.value;
+        const before = text.substring(0, start);
+        const after  = text.substring(end, text.length);
+        el.value = (before + newText + after);
+        el.selectionStart = el.selectionEnd = start + newText.length;
+        el.focus();
+    }
+
+    /**
+     * Surround selected text with the given symbols
+     * @param {Input Element} el 
+     * @param {string} startText 
+     * @param {string} endText 
+     */
+    function SurroundText(el, startText, endText) {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const text = el.value;
+        const before = text.substring(0, start);
+        const middle = text.substring(start, end);
+        const after  = text.substring(end, text.length);
+
+        el.value = (before + startText + middle + endText + after);
+        el.selectionStart = el.selectionEnd = start + startText.length + endText.length;
+        el.focus();
+    }
+
+    /**
+     * Setup a text editor
+     * @param {Input Element} el 
+     */
+    function SetupTextEditor(el, preview) {
+        function tabKeyHandler(e) {
+            const TABKEY = 9;
+            if(e.keyCode == TABKEY) {
+                InsertAtCursor(el, "    ");
+                if(e.preventDefault) {
+                    e.preventDefault();
+                }
+                return false;
+            }
+        }
+
+        function sync_scroll() {
+            preview.scrollTop = el.scrollTop;
+            preview.scrollLeft = el.scrollLeft;
+        }
+
+        if(el.addEventListener ) {
+            el.addEventListener('keydown', tabKeyHandler, false);
+            el.addEventListener('scroll', sync_scroll, false);
+        } else if(myInput.attachEvent ) {
+            /* IE hack */
+            el.attachEvent('onkeydown', tabKeyHandler);
+            el.attachEvent('scroll', sync_scroll); 
+        }
     }
 
     /**
@@ -68,11 +144,15 @@ window.RpgNotes = (function(){
 
     /**
      * Setup map client interactions for the specific div
-     * @param {Element} mapdiv 
+     * @param {Element} mapdiv map that actually is moved within the container
+     * @param {Element} containerdiv Container in which interactions occur
      */
-    function SetupMap(mapdiv) {
-        if (mapdiv === null || mapdiv === undefined)
+    function SetupMap(containerdiv, mapdiv) {
+        if (containerdiv === null || containerdiv === undefined)
             return;
+        if (mapdiv === null || mapdiv === undefined) {
+            mapdiv = containerdiv;
+        }
 
         let scrollX = 0;
         let scrollY = 0;
@@ -163,15 +243,15 @@ window.RpgNotes = (function(){
             updateScrollPosition(newX, newY);
         }
 
-        mapdiv.addEventListener('mousedown', dragStart);
-        mapdiv.addEventListener('mousemove', dragMove);
-        mapdiv.addEventListener('mouseout', dragEnd);
-        mapdiv.addEventListener('mouseup', dragEnd);
+        containerdiv.addEventListener('mousedown', dragStart);
+        containerdiv.addEventListener('mousemove', dragMove);
+        containerdiv.addEventListener('mouseout', dragEnd);
+        containerdiv.addEventListener('mouseup', dragEnd);
 
-        mapdiv.addEventListener('touchstart', dragStart);
-        mapdiv.addEventListener('touchmove', dragMove);
-        mapdiv.addEventListener('touchleave', dragEnd);
-        mapdiv.addEventListener('touchend', dragEnd);
+        containerdiv.addEventListener('touchstart', dragStart);
+        containerdiv.addEventListener('touchmove', dragMove);
+        containerdiv.addEventListener('touchleave', dragEnd);
+        containerdiv.addEventListener('touchend', dragEnd);
 
         var instance = {
             setMagnification,
@@ -221,11 +301,20 @@ window.RpgNotes = (function(){
     }
 
     return {
+        Editor: {
+            Setup: SetupTextEditor,
+            GetSelectionStart,
+            GetSelectionEnd,
+            InsertAtCursor,
+            SurroundText,
+        },
         FileInputFullPath,
         InputBindFileDrop,
         CopyToClipboard,
-        GetSelectionStart,
-        GetSelectionEnd,
+        SetFocus,
+        Graph: {
+            Setup: SetupMap,
+        },
         Map: {
             Setup: SetupMap,
             PanTo: MapPanTo,

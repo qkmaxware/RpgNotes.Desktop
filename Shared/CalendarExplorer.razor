@@ -1,0 +1,316 @@
+@using System.IO
+@using System.Text.Json
+@using System.Text.RegularExpressions
+
+<div style="height: 100%;">
+    <div class="w3-row" style="height: 3em;">
+        <div class="w3-col w3-right" style="width: 4em">
+            <div class="w3-dropdown-hover">
+                <button class="w3-button ok w3-border-bottom" style="text-align: center; width: 100%;">&plus;</button>
+                <div class="w3-dropdown-content w3-bar-block w3-border" style="right: 0; width: 20em;">
+                    <button class="w3-bar-item w3-button" @onclick=newCalendar>&plus; Calendar</button>
+                    <button class="w3-bar-item w3-button" @onclick=newSchedule>&plus; Schedule</button>
+                </div>
+            </div>
+        </div>
+        <div class="w3-rest">
+            <input type="text" placeholder="filter (.*)" class="w3-input w3-margin-bottom" @bind=filter>
+        </div>
+    </div>
+    <div style="height: calc(100% - 3em); overflow: auto;">
+        <ul class="w3-ul no-lines">
+            @if (this.schedules != null) {
+                foreach (var calendar in this.schedules) {
+                    var self = calendar;
+                    if (calendar != null && calendar.Name != null && (this.Filter == null || this.Filter.IsMatch(calendar.Name))) {
+                        <li class="button" @ondblclick=@(() => OpenFile(self)) @oncontextmenu=@((args) => OpenFileContext(args, self)) @oncontextmenu:preventDefault="true">@calendar.Name</li>
+                    }
+                }
+            }
+        </ul>
+    </div>
+</div>
+
+<Modal @ref=newCalendarModal>
+    <header class="w3-container">
+        <h3>New Calendar</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Name</h4>
+        <input type="text" class="w3-input" @bind=customCalendarName placeholder="calendar name">
+        <h4>Months</h4>
+        <ol>
+        @if(this.customCalendar != null) {
+            for (var i = 0; i < this.customCalendar.Count; i++) {
+                var month = this.customCalendar[i];
+                <li>
+                    <input type="text" class="w3-input" @bind=month.FullName placeholder="@($"{addTh(i + 1)} month name")">
+                    <div class="w3-margin-left w3-margin-bottom">
+                        <h5>
+                            days
+                            <button class="w3-round w3-button error w3-small" @onclick=@(() => {
+                                if (month.Dates != null && month.Dates.Count > 0) {
+                                    month.Dates.RemoveAt(month.Dates.Count - 1);
+                                }    
+                            })>&minus;</button>
+                            <button class="w3-round w3-button ok w3-small" @onclick=@(() => {
+                                if (month.Dates == null)
+                                    month.Dates = new List<string>();
+                                month.Dates.Add(string.Empty);
+                            })>&plus;</button>
+                        </h5>
+                        <div>
+                            @if (month.Dates != null) {
+                                for (var j = 0; j < month.Dates.Count; j++) {
+                                    <div class="w3-padding" style="display: inline-block; width: 25%;">
+                                        <input type="text" class="w3-input" @bind=month.Dates[j] placeholder="@($"{month.FullName} {addTh(j + 1)} name")">
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </li>
+            }
+        }
+        </ol>
+        <div class="w3-right-align">
+            <button class="w3-round w3-button error" @onclick=removeMonth>&minus;</button>
+            <button class="w3-round w3-button ok" @onclick=addMonth>&plus;</button>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancelNewCalendar>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <div class="w3-right-align" style="overflow: hidden;">
+                <button class="w3-button w3-round ok" @onclick=saveNewCalendar>Confirm</button>
+            </div>
+        </div>
+    </footer>
+</Modal>
+
+<Modal @ref=newScheduleModal>
+    <header class="w3-container">
+        <h3>New Schedule</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Name</h4>
+        <input type="text" class="w3-input" @bind=newScheduleName placeholder="schedule name">
+        <h4>Calendar</h4>
+        <select @bind=newScheduleCalendarName>
+            <option></option>
+            @if(this.calendars != null) {
+                foreach (var calendar in this.calendars) {
+                    <option>@calendar.Name</option>
+                }
+            }
+        </select>
+        <h4>FrontMatter Field Name</h4>
+        <input type="text" class="w3-input" @bind=newScheduleDateFrontmatterFieldName placeholder="frontmatter field name for dates">
+        <h4>Tag Filters</h4>
+        <ol>
+            @if(this.newScheduleTagFilters != null) {
+                for (var i = 0; i < this.newScheduleTagFilters.Count; i++) {
+                    var j = i;
+                    <li><input type="text" class="w3-input" @bind=newScheduleTagFilters[j] placeholder="@(addTh(j + 1)) tag"></li>
+                }
+            }
+        </ol>
+        <div class="w3-right-align">
+            <button class="w3-round w3-button error" @onclick=removeTag>&minus;</button>
+            <button class="w3-round w3-button ok" @onclick=addTag>&plus;</button>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancelNewSchedule>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <div class="w3-right-align" style="overflow: hidden;">
+                <button class="w3-button w3-round ok" @onclick=saveNewSchedule>Confirm</button>
+            </div>
+        </div>
+    </footer>
+</Modal>
+
+@code {
+    [Parameter] public string Directory {get; set;}
+    [Parameter] public Action<MouseEventArgs, Schedule> OnRightClick {get; set;}
+    [Parameter] public Action<Schedule> OnFileDbClick {get; set;}
+
+    private List<Schedule> schedules = null;
+    protected override void OnInitialized() {
+        refreshCalendars();
+        refreshSchedules();
+    }
+
+    public void OpenFileContext(MouseEventArgs args, Schedule calendar) {
+        OnRightClick?.Invoke(args, calendar);
+    }
+    public void OpenFile(Schedule calendar) {
+        OnFileDbClick?.Invoke(calendar);
+    }
+
+    private string filter {
+        get => regexStr;
+        set {
+            regexStr = value;
+            if (string.IsNullOrEmpty(regexStr)) {
+                this.Filter = allFilter;
+            } else {
+                try {
+                    this.Filter = new Regex(regexStr, RegexOptions.IgnoreCase);
+                } catch {
+                    this.Filter = noneFilter;
+                }
+            }
+        }
+    }
+    private string regexStr;
+    private static Regex allFilter = new Regex(".*");
+    private static Regex noneFilter = new Regex("(?!x)x");
+    public Regex Filter {get; private set;}
+
+    private Modal newCalendarModal;
+    private Modal newScheduleModal;
+
+    private string customCalendarName;
+    private List<CustomMonth> customCalendar;
+    private List<Calendar> calendars;
+
+    private void newCalendar() {
+        customCalendarName = null;
+        customCalendar = new List<CustomMonth>();
+        var now = DateTime.Now;
+        for (var i = 1; i <= 12; i++) {
+            var month = new RealMonth(i);
+            customCalendar.Add(new CustomMonth{
+                FullName = month.FullName,
+                AbbreviatedName = month.AbbreviatedName,
+                Dates = Enumerable.Range(0, DateTime.DaysInMonth(now.Year, i)).Select(day => (day + 1).ToString()).ToList()
+            });
+        }
+        newCalendarModal?.SetVisibility(true);
+    }
+    private string addTh(int count) {
+        if (count == 0)
+            return count.ToString() + "th";
+        else if (count == 1)
+            return count.ToString() + "st";
+        else if (count == 2) 
+            return count.ToString() + "nd";
+        else if (count == 3)
+            return count.ToString() + "rd";
+        else 
+            return count.ToString() + "th";
+    }
+    private void removeMonth() {
+        if (customCalendar != null && customCalendar.Count > 0) {
+            customCalendar.RemoveAt(customCalendar.Count - 1);
+        }
+    }
+    private void addMonth() {
+        if (customCalendar == null)
+            customCalendar = new List<CustomMonth>();
+        
+        customCalendar.Add(new CustomMonth());
+    }
+
+    private void cancelNewCalendar() {
+        this.newCalendarModal?.SetVisibility(false);
+    }
+    private void saveNewCalendar() {
+        var saveDir = Path.Combine(this.Directory, ".data", ".calendars");
+        System.IO.Directory.CreateDirectory(saveDir);
+        var name = customCalendarName.Trim();
+        var saveFile = Path.Combine(saveDir, name + ".json");
+        System.IO.File.WriteAllText(saveFile, JsonSerializer.Serialize(this.customCalendar));
+        this.newCalendarModal?.SetVisibility(false);
+
+        var c = new CustomCalendar(name);
+        c.MonthDefinitions = this.customCalendar;
+        this.customCalendar = null;
+        this.calendars.Add(c);
+    }
+
+    private void refreshCalendars() {
+        var dir = new DirectoryInfo(this.Directory);
+        if (dir.Exists) {
+            this.calendars = new List<Calendar>();
+            this.calendars.Add(GregorianCalendar.Instance);
+            foreach (var json in dir.GetJsonAssets()) {
+                try {
+                    var calendar = JsonSerializer.Deserialize<CustomCalendar>(System.IO.File.ReadAllText(json.FullName));
+                    if (calendar != null && calendar.MonthDefinitions.Count > 0) {
+                        calendar.Name = Path.GetFileNameWithoutExtension(json.Name);
+                        this.calendars.Add(calendar);
+                    }
+                } catch {}
+            }
+        }
+    }
+
+    private string newScheduleName;
+    private string newScheduleCalendarName;
+    private string newScheduleDateFrontmatterFieldName;
+    private List<string> newScheduleTagFilters;
+
+    private void newSchedule() {
+        this.newScheduleName = null;
+        this.newScheduleCalendarName = GregorianCalendar.Instance.Name;
+        this.newScheduleDateFrontmatterFieldName = "date";
+        newScheduleTagFilters = new List<string>();
+        this.newScheduleModal?.SetVisibility(true);
+    }
+    private void cancelNewSchedule() {
+        this.newScheduleModal?.SetVisibility(false);
+    }
+
+    private void saveNewSchedule() {
+        var saveDir = Path.Combine(this.Directory, ".data", ".schedules");
+        System.IO.Directory.CreateDirectory(saveDir);
+        var name = newScheduleName.Trim();
+        var saveFile = Path.Combine(saveDir, name + ".json");
+        var schedule = new Schedule{
+            Name = name,
+            SourceFile = new FileInfo(saveFile),
+            Calendar = newScheduleCalendarName,
+            ArticleDateFieldName = newScheduleDateFrontmatterFieldName,
+            TagFilters = newScheduleTagFilters
+        };
+        System.IO.File.WriteAllText(saveFile, JsonSerializer.Serialize(schedule));
+        this.newScheduleModal?.SetVisibility(false);
+
+        this.schedules.Add(schedule);
+    }
+
+    private void removeTag() {
+        if (newScheduleTagFilters != null && newScheduleTagFilters.Count > 0) {
+            newScheduleTagFilters.RemoveAt(newScheduleTagFilters.Count - 1);
+        }
+    }
+    private void addTag() {
+        if (newScheduleTagFilters == null) {
+            newScheduleTagFilters = new List<string>();
+        }
+        newScheduleTagFilters.Add(string.Empty);
+    }
+
+    private void refreshSchedules() {
+        var dir = new DirectoryInfo(this.Directory);
+        if (dir.Exists) {
+            this.schedules = new List<Schedule>();
+            foreach (var json in dir.GetJsonAssets()) {
+                try {
+                    var calendar = JsonSerializer.Deserialize<Schedule>(File.ReadAllText(json.FullName));
+                    if (!string.IsNullOrEmpty(calendar.Calendar)) {
+                        calendar.Name = Path.GetFileNameWithoutExtension(json.Name);
+                        calendar.SourceFile = json;
+                        schedules.Add(calendar);
+                    }
+                } catch {}
+            }
+        }
+    }
+}

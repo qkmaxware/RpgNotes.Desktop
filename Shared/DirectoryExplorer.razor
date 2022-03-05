@@ -1,0 +1,114 @@
+@using System.IO
+@using RpgNotes.Desktop.Shared.Popups
+@using System.Text.RegularExpressions
+@implements IDisposable
+
+@if (Exists) {
+<div style="height: 100%;">
+    @{
+        var root = new DirectoryInfo(Directory);
+    }
+    <div style="height: 3em;">
+        <input type="text" placeholder="filter (.*)" class="w3-input w3-margin-bottom" @bind=filter>
+    </div>
+    <div style="height: calc(100% - 3em); overflow: auto;">
+        <CascadingValue Value=this>
+        <DirectoryView Directory=root Expanded=true></DirectoryView>
+        </CascadingValue>
+    </div>
+</div>
+} else {
+<Error>
+    Directory '@(Directory)' does not exist.
+</Error>
+}
+
+@code {
+    [Parameter] public string Directory {get; set;}
+    [Parameter] public Action<MouseEventArgs, FileSystemInfo> OnRightClick {get; set;}
+    [Parameter] public Action<FileInfo> OnFileDbClick {get; set;}
+    public bool Exists => !string.IsNullOrEmpty(Directory) && System.IO.Directory.Exists(Directory);
+
+    private FileSystemWatcher watcher;
+
+    protected override void OnInitialized() {
+        if (Exists) {
+            watcher = new FileSystemWatcher(this.Directory);
+
+            watcher.NotifyFilter = NotifyFilters.Attributes
+                                 | NotifyFilters.CreationTime
+                                 | NotifyFilters.DirectoryName
+                                 | NotifyFilters.FileName
+                                 | NotifyFilters.LastAccess
+                                 | NotifyFilters.LastWrite
+                                 | NotifyFilters.Security
+                                 | NotifyFilters.Size;
+
+            watcher.Changed += OnChanged;
+            watcher.Created += OnCreated;
+            watcher.Deleted += OnDeleted;
+            watcher.Renamed += OnRenamed;
+            watcher.Error += OnError;
+
+            watcher.Filter = "*.*";
+            watcher.IncludeSubdirectories = true;
+            watcher.EnableRaisingEvents = true;
+        }
+    }
+
+    public void Dispose() {
+        if (watcher != null) {
+            watcher.Dispose();
+            watcher = null;
+        }
+    }
+
+    private string filter {
+        get => regexStr;
+        set {
+            regexStr = value;
+            if (string.IsNullOrEmpty(regexStr)) {
+                this.Filter = allFilter;
+            } else {
+                try {
+                    this.Filter = new Regex(regexStr, RegexOptions.IgnoreCase);
+                } catch {
+                    this.Filter = noneFilter;
+                }
+            }
+        }
+    }
+    private string regexStr;
+    private static Regex allFilter = new Regex(".*");
+    private static Regex noneFilter = new Regex("(?!x)x");
+    public Regex Filter {get; private set;}
+
+    public void OpenFileContext(MouseEventArgs args, FileSystemInfo fsObj) {
+        OnRightClick?.Invoke(args, fsObj);
+    }
+    public void OpenFile(FileInfo fsObj) {
+        OnFileDbClick?.Invoke(fsObj);
+    }
+
+    private static void OnChanged(object sender, FileSystemEventArgs e) {
+        if (e.ChangeType != WatcherChangeTypes.Changed) {
+            return;
+        }
+    }
+
+    private void OnCreated(object sender, FileSystemEventArgs e) {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnDeleted(object sender, FileSystemEventArgs e) {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRenamed(object sender, RenamedEventArgs e) {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnError(object sender, System.IO.ErrorEventArgs e) {
+        
+    }
+}

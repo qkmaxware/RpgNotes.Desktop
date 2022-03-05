@@ -1,0 +1,79 @@
+<div>
+    <div>
+        <button class="w3-button @(isAnd ? "ok" : "header")" @onclick=setAnd>And</button><button class="w3-button @(isOr ? "ok" : "header")" @onclick=setOr>Or</button><button class="w3-button @(isXor ? "ok" : "header")" @onclick=setXor>Xor</button><button class="w3-button @(isCheck ? "ok" : "header")" @onclick=setCheck>Check</button>
+    </div>
+    <div class="w3-padding" style="border-left: 1px solid var(--theme-header); border-bottom: 1px solid var(--theme-header)">
+        @if (isCheck) {
+            <div class="w3-row">
+                <div class="w3-col s4">
+                    <select @bind=Expression.Selector>
+                        @foreach (var selector in Enum.GetValues<FilterSelector>()) {
+                        <option>@selector</option>
+                        }
+                    </select>
+                </div>
+                <div class="w3-col s4">
+                    <select @bind=Expression.Comparator>
+                        @foreach (var comparison in Enum.GetValues<FilterComparison>()) {
+                        <option>@comparison</option>
+                        }
+                    </select>
+                </div>
+                <div class="w3-col s4"> 
+                    <input type="text" placeholder="value" @bind=Expression.Value/>
+                </div>
+            </div>
+        } else {
+            if (this.Expression.SubExpressions != null) {
+                foreach (var subexpr in this.Expression.SubExpressions) {
+                    if (subexpr != null) {
+                        <ExpressionBuilder_Expression Expression=@subexpr></ExpressionBuilder_Expression>
+                    }
+                }
+            }
+            <div class="w3-right-align">
+                <button class="w3-button w3-round error" @onclick=removeExpr>-</button>
+                <button class="w3-button w3-round ok" @onclick=addExpr>+</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public FilterExpression Expression {get; set;}
+
+    private bool isAnd => Expression.Operator.HasValue && Expression.Operator.Value == FilterOperator.And;
+    private void setAnd() {
+        this.Expression.Comparator = null;
+        this.Expression.Operator = FilterOperator.And;
+    }
+    private bool isOr => Expression.Operator.HasValue && Expression.Operator.Value == FilterOperator.Or;
+    private void setOr() {
+        this.Expression.Comparator = null;
+        this.Expression.Operator = FilterOperator.Or;
+    }
+    private bool isXor => Expression.Operator.HasValue && Expression.Operator.Value == FilterOperator.Xor;
+    private void setXor() {
+        this.Expression.Comparator = null;
+        this.Expression.Operator = FilterOperator.Xor;
+    }
+    private void removeExpr() {
+        if (this.Expression.SubExpressions != null && this.Expression.SubExpressions.Count > 0) {
+            this.Expression.SubExpressions.RemoveAt(this.Expression.SubExpressions.Count - 1);
+        }
+    }
+    private void addExpr() {
+        if (this.Expression.SubExpressions == null) {
+            this.Expression.SubExpressions = new List<FilterExpression>();
+        }
+        this.Expression.SubExpressions.Add(new FilterExpression() { Operator = FilterOperator.And });
+    }
+
+    private bool isCheck => !Expression.Operator.HasValue && Expression.Comparator.HasValue;
+    private void setCheck() {
+        this.Expression.Operator = null;
+        this.Expression.Selector = FilterSelector.Tag;
+        this.Expression.Comparator = FilterComparison.Equal;
+        this.Expression.SubExpressions = new List<FilterExpression>();
+    }
+}

@@ -1,0 +1,262 @@
+@using System.IO
+@using System.Text.Json
+@using System.Text.RegularExpressions
+
+<div style="height: 100%;">
+    <div class="w3-row" style="height: 3em;">
+        <div class="w3-col w3-right" style="width: 4em">
+            <button class="w3-button ok w3-border-bottom" style="text-align: center; width: 100%;" @onclick=openNewModal>&plus;</button>
+        </div>
+        <div class="w3-rest">
+            <input type="text" placeholder="filter (.*)" class="w3-input w3-margin-bottom" @bind=filter>
+        </div>
+    </div>
+    <div style="height: calc(100% - 3em); overflow: auto;">
+        <ul class="w3-ul no-lines">
+            @if (this.collections != null) {
+                foreach (var collection in this.collections) {
+                    var self = collection;
+                    <li style="list-style-type: none;">
+                        <div class="button tree-caret @(self.Expanded ? "tree-caret-expanded" : string.Empty)" @onclick=@(() => { self.Expanded = !self.Expanded; if(self.Expanded) { refreshArticlesForCollection(self); }}) @oncontextmenu=@((args) => openCollectionContextMenu(args, self)) @oncontextmenu:preventDefault="true">@self.Name</div>
+                        <ul class="@(self.Expanded ? "tree-expanded" : "tree-collapse")" style="list-style-type: none; margin-block-start: 0; padding-inline-start: 2em;">
+                            @if(self.Articles != null && self.Articles.Count > 0) {
+                                foreach (var article in self.Articles) {
+                                    var name = article.Name;
+                                    if (article != null && name != null && (this.Filter == null || this.Filter.IsMatch(name))) {
+                                        <li class="button" @ondblclick=@(() => openFile(article)) @oncontextmenu=@((args) => openArticleContextMenu(args, article)) @oncontextmenu:preventDefault="true">@name</li>
+                                    }
+                                }
+                            }
+                        </ul>
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+</div>
+
+<Modal @ref=newCollectionModal>
+    <header class="w3-container">
+        <h3>New Collection</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Name</h4>
+        <input type="text" class="w3-input" @bind=customCollectionName placeholder="collection name">
+        <h4>Tags To Include</h4>
+        <ol>
+        @if(this.tags != null) {
+            for (var i = 0; i < this.tags.Count; i++) {
+                var j = i;
+                <li>
+                    <input type="text" class="w3-input" @bind=tags[j] placeholder="@($"{addTh(j + 1)} tag")">
+                </li>
+            }
+        }
+        </ol>
+        <div class="w3-right-align">
+            <button class="w3-round w3-button error" @onclick=removeTag>&minus;</button>
+            <button class="w3-round w3-button ok" @onclick=addTag>&plus;</button>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancelNewCollection>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <button class="w3-button w3-round ok" @onclick=saveNewCollection>Confirm</button>
+        </div>
+    </footer>
+</Modal>
+
+<Modal @ref=editCollectionModal>
+    <header class="w3-container">
+        <h3>Modify Collection</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Tags To Include</h4>
+        <ol>
+        @if(this.tagsToEdit != null) {
+            for (var i = 0; i < this.tagsToEdit.Count; i++) {
+                var j = i;
+                <li>
+                    <input type="text" class="w3-input" @bind=tagsToEdit[j] placeholder="@($"{addTh(j + 1)} tag")">
+                </li>
+            }
+        }
+        </ol>
+        <div class="w3-right-align">
+            <button class="w3-round w3-button error" @onclick=removeTag>&minus;</button>
+            <button class="w3-round w3-button ok" @onclick=addTag>&plus;</button>
+        </div>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancelModifyCollection>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            <button class="w3-button w3-round ok" @onclick=saveModifyCollection>Confirm</button>
+        </div>
+    </footer>
+</Modal>
+
+@code {
+    [Parameter] public string Directory {get; set;}
+    [Parameter] public Action<Article> OnFileDbClick {get; set;}
+
+    [Parameter] public Action<MouseEventArgs, Collection> OnCollectionRightClick {get; set;}
+    [Parameter] public Action<MouseEventArgs, Article> OnArticleRightClick {get; set;}
+    private string regexStr;
+    private static Regex allFilter = new Regex(".*");
+    private static Regex noneFilter = new Regex("(?!x)x");
+    public Regex Filter {get; private set;}
+    private string filter {
+        get => regexStr;
+        set {
+            regexStr = value;
+            if (string.IsNullOrEmpty(regexStr)) {
+                this.Filter = allFilter;
+            } else {
+                try {
+                    this.Filter = new Regex(regexStr, RegexOptions.IgnoreCase);
+                } catch {
+                    this.Filter = noneFilter;
+                }
+            }
+        }
+    }
+
+
+    protected override void OnInitialized() {
+        refreshCollections();
+    }
+
+    private List<Collection> collections;
+    private void refreshCollections() {
+        var dir = new DirectoryInfo(this.Directory);
+        if (dir.Exists) {
+            this.collections = new List<Collection>();
+            foreach (var json in dir.GetJsonAssets()) {
+                try {
+                    var collection = JsonSerializer.Deserialize<Collection>(System.IO.File.ReadAllText(json.FullName));
+                    if (collection != null && collection.Include != null) {
+                        collection.Name = Path.GetFileNameWithoutExtension(json.Name);
+                        collection.SourceFile = json;
+                        this.collections.Add(collection);
+                    }
+                } catch {}
+            }
+        }
+    }
+    private void refreshArticlesForCollection(Collection c) {
+        c.Articles = new List<Article>();
+
+        // This collection includes nothing!!
+        if (c.Include == null || c.Include.Count < 1)
+            return;
+
+        var dir = new DirectoryInfo(this.Directory);
+        if (dir.Exists) {
+            var files = dir.GetMarkdownArticles();
+            foreach (var file in files) {
+                var article = new Article(file);
+                var tags = article.Tags().ToList();
+                foreach (var tag in tags) {
+                    if (c.Include.Contains(tag)) {
+                        c.Articles.Add(article);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private Modal newCollectionModal;
+    private string customCollectionName;
+    private List<string> tags;
+    private void openNewModal() {
+        customCollectionName = null;
+        tags = new List<string>();
+        newCollectionModal?.SetVisibility(true);
+    }
+
+    private void removeTag() {
+        if (tags == null || tags.Count < 1)
+            return;
+        tags.RemoveAt(tags.Count - 1);
+    }
+
+    private void addTag() {
+        if (tags == null)
+            tags = new List<string>();
+        tags.Add(string.Empty);
+    }
+
+    private string addTh(int count) {
+        if (count == 0)
+            return count.ToString() + "th";
+        else if (count == 1)
+            return count.ToString() + "st";
+        else if (count == 2) 
+            return count.ToString() + "nd";
+        else if (count == 3)
+            return count.ToString() + "rd";
+        else 
+            return count.ToString() + "th";
+    }
+
+    private void cancelNewCollection() {
+        newCollectionModal?.SetVisibility(false);
+    }
+
+    private void saveNewCollection() {
+        var saveDir = Path.Combine(this.Directory, ".data", ".collections");
+        System.IO.Directory.CreateDirectory(saveDir);
+        var name = customCollectionName.Trim();
+        var saveFile = Path.Combine(saveDir, name + ".json");
+        var collection = new Collection {
+            Name = name,
+            SourceFile = new FileInfo(saveFile),
+            Include = new List<string>(this.tags)
+        };
+        System.IO.File.WriteAllText(saveFile, JsonSerializer.Serialize(collection));
+        newCollectionModal?.SetVisibility(false);
+
+        this.collections.Add(collection);
+    }
+
+    private Modal editCollectionModal;
+    private Collection collectionToEdit;
+    private List<string> tagsToEdit;
+    public void Edit (Collection collection) {
+        collectionToEdit = collection;
+        this.tagsToEdit = collection?.Include;
+        if (this.tagsToEdit != null) {
+            editCollectionModal?.SetVisibility(true);
+        }
+    }
+    private void cancelModifyCollection() {
+        this.tagsToEdit = null;
+        editCollectionModal?.SetVisibility(false);
+    }
+    private void saveModifyCollection() {
+        if (collectionToEdit != null && collectionToEdit.SourceFile != null) {
+            System.IO.File.WriteAllText(
+                collectionToEdit.SourceFile.FullName, 
+                JsonSerializer.Serialize(collectionToEdit)
+            );
+        }
+        editCollectionModal?.SetVisibility(true);
+    }
+
+    private void openCollectionContextMenu(MouseEventArgs args, Collection collection) {
+        this.OnCollectionRightClick?.Invoke(args, collection);
+    }
+
+    private void openArticleContextMenu(MouseEventArgs args, Article article) {
+        this.OnArticleRightClick?.Invoke(args, article);
+    }
+
+    private void openFile(Article article) {
+        OnFileDbClick?.Invoke(article);
+    }
+}

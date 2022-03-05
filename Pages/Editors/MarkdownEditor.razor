@@ -1,0 +1,218 @@
+@inject IJSRuntime js;
+@inject NavigationManager nav;
+@inject AppData app;
+@inherits EditorBase;
+@page "/home/{HomeRef}/editors/edit/{FileRef}"
+@using System.Timers
+@using System.Text.RegularExpressions
+
+@if (Exists) {
+<Header>
+    @if (File.IsMarkdown()) {
+    <button class="w3-button w3-bar-item" title="heading 1" @onclick=@(() => makeHeader(1))>H<sub>1</sub></button>
+    <button class="w3-button w3-bar-item" title="heading 2" @onclick=@(() => makeHeader(2))>H<sub>2</sub></button>
+    <button class="w3-button w3-bar-item" title="heading 3" @onclick=@(() => makeHeader(3))>H<sub>3</sub></button>
+    <span   class="w3-bar-item error-text">|</span>
+    <button class="w3-button w3-bar-item" title="bold (@(app.Config.Value.Hotkeys.Editor.BoldText))" @onclick=makeBold><strong>B</strong></button>
+    <button class="w3-button w3-bar-item" title="italics (@(app.Config.Value.Hotkeys.Editor.ItalicizeText))" @onclick=makeItalics><i>i</i></button>
+    <button class="w3-button w3-bar-item" title="underline (@(app.Config.Value.Hotkeys.Editor.UnderlineText))" @onclick=makeUnderline><u>U</u></button>
+    <button class="w3-button w3-bar-item" title="strikethrough (@(app.Config.Value.Hotkeys.Editor.StrikethroughText))" @onclick=makeStrike><s>O</s></button>
+    <button class="w3-button w3-bar-item" title="superscript (@(app.Config.Value.Hotkeys.Editor.SuperscriptText))" @onclick=makeSuper>x<sup>2</sup></button>
+    <button class="w3-button w3-bar-item" title="subscript (@(app.Config.Value.Hotkeys.Editor.SubscriptText))" @onclick=makeSub>x<sub>2</sub></button>
+    <span   class="w3-bar-item error-text">|</span>
+    <button title="blockquote" class="w3-button w3-bar-item" @onclick=makeQuote>"</button>
+    <button title="unordered list" class="w3-button w3-bar-item" @onclick=addUl><img src="static/images/unorderedList.svg" height=20></button>
+    <button title="ordered list" class="w3-button w3-bar-item" @onclick=addOl><img src="static/images/orderedList.svg" height=20></button>
+    <span   class="w3-bar-item error-text">|</span>
+    <button title="insert link to article (@(app.Config.Value.Hotkeys.Editor.InsertArticleLink))" class="w3-button w3-bar-item" @onclick=showLinkingScreen><img src="static/images/link.svg" height=20></button>
+    <span   class="w3-bar-item error-text">|</span>
+    <button class="w3-button w3-bar-item" @onclick=save>save</button>
+    <button title="view" class="w3-button w3-bar-item w3-right" @onclick=render><img src="static/images/view.svg" height=20></button>
+    }
+</Header>
+<!-- TODO https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/ -->
+<div style="position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; padding-top: 38px;">
+    <div class="editor">
+        <textarea @ref=editElement @bind=text @onkeydown=listen></textarea>
+        @*<div class="code" @ref=previewElement>
+            @((MarkupString)_html)
+        </div>*@
+    </div>
+</div>
+<ArticleLinkSearch @ref="articleLinkSearchBox" OnArticleSelect=linkArticle OnCancel=hideLinkingScreen>
+</ArticleLinkSearch>
+} else {
+<Error>
+    File '@(File)' does not exist.
+</Error>
+}
+
+@code {
+    private string _text;
+    private string text {
+        get => this._text;
+        set { 
+            this._text = value;
+            highlight();
+        }
+    }
+
+    private string _html;
+    List<Tuple<Regex, MatchEvaluator>> htmlReplacements = new List<Tuple<Regex, MatchEvaluator>>{
+        // HTML safety
+        new Tuple<Regex, MatchEvaluator>(new Regex("&"), (m) => "&amp;"),
+        new Tuple<Regex, MatchEvaluator>(new Regex("<"), (m) => "&lt;"),
+        new Tuple<Regex, MatchEvaluator>(new Regex(">"), (m) => "&gt;"),
+
+        // Markdown rules
+        //new Tuple<Regex, MatchEvaluator>(new Regex(@"\[(.*?)\]\((.*?)\)"), (m) => "<span class=\"md-link\">[" + m.Groups[1].Value + "]</span><span class=\"md-label\">(" + m.Groups[2].Value + ")</span>"),
+        //new Tuple<Regex, MatchEvaluator>(Article.InternalLinkPattern, (m) => "<span class=\"md-link\">" + m.Value + "</span>"),
+        new Tuple<Regex, MatchEvaluator>(new Regex("#+[^\n]*"), (m) => "<span class=\"md-header\">" + m.Value + "</span>"),
+        new Tuple<Regex, MatchEvaluator>(new Regex(@"(?<!\*)\*[^\*]+\*"), (m) => "<span class=\"md-italics\">" + m.Value + "</span>"),
+        new Tuple<Regex, MatchEvaluator>(new Regex(@"\*\*[^\*]+\*\*"), (m) => "<span class=\"md-bold\">" + m.Value + "</span>"),
+    };
+    private void highlight() {
+        /*var str = text;
+        foreach (var pattern in htmlReplacements) {
+            str = pattern.Item1.Replace(str, pattern.Item2);
+        }
+        _html = str;*/
+    }
+
+    private void save() {
+        System.IO.File.WriteAllText(this.File.FullName, this.text);
+    }
+
+    protected override void OnParametersSet () {
+        base.OnParametersSet ();
+        if (Exists) {
+            text = System.IO.File.ReadAllText(this.File.FullName);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool first) {
+        if (first) {
+            await js.InvokeVoidAsync("RpgNotes.Editor.Setup", editElement, previewElement);
+        }
+    }
+
+    private void render() {
+        this.nav.NavigateTo(new PageInfo(
+            home: this.HomeRef,
+            editor: "editors/render",
+            path: File.FullName
+        ).Url);
+    }
+
+    private void listen(KeyboardEventArgs args) {
+        if (app.Config.Value.Hotkeys.Editor.InsertArticleLink.IsTriggered(args)) {
+            showLinkingScreen();
+        }
+        if (app.Config.Value.Hotkeys.Editor.BoldText.IsTriggered(args)) {
+            makeBold();
+        }
+        if (app.Config.Value.Hotkeys.Editor.UnderlineText.IsTriggered(args)) {
+            makeUnderline();
+        }
+        if (app.Config.Value.Hotkeys.Editor.ItalicizeText.IsTriggered(args)) {
+            makeItalics();
+        }
+        if (app.Config.Value.Hotkeys.Editor.StrikethroughText.IsTriggered(args)) {
+            makeStrike();
+        }
+        if (app.Config.Value.Hotkeys.Editor.SuperscriptText.IsTriggered(args)) {
+            makeSuper();
+        }
+        if (app.Config.Value.Hotkeys.Editor.SubscriptText.IsTriggered(args)) {
+            makeSub();
+        }
+    }
+
+    #region Linking
+    private ArticleLinkSearch articleLinkSearchBox;
+    private void showLinkingScreen() {
+        articleLinkSearchBox?.BeginSearch(this.HomeDirectory);
+    }
+    private async void hideLinkingScreen() {
+        await this.js.InvokeVoidAsync("RpgNotes.SetFocus", this.editElement);
+    }
+    private async void linkArticle(Article article) {
+        var path = System.IO.Path.GetRelativePath(this.HomeDirectory.FullName, article.File.FullName);
+        await insertAtSelectionStart($"[[{path}]]");
+    }
+
+    #endregion
+
+    #region UI Buttons
+    private async void makeBold() {
+        await surroundSelection("**", "**");
+    }
+
+    private async void makeItalics() {
+        await surroundSelection("*", "*");
+    }
+
+    private async void makeUnderline() {
+        await surroundSelection("<u>", "</u>");    
+    }
+
+    private async void makeStrike() {
+        await surroundSelection("<s>", "</s>");  
+    }
+
+    private async void makeSuper() {
+        await surroundSelection("<sup>", "</sup>");
+    }
+
+    private async void makeSub() {
+        await surroundSelection("<sub>", "</sub>");
+    }
+
+    private async void makeHeader(int depth) {
+        await surroundSelection(new string('#', depth) + " ", string.Empty);
+    }
+
+    private async void makeQuote() {
+        await surroundSelection("> ", string.Empty);
+    }
+
+    private async void addUl() {
+        await insertAtSelectionStart(
+@"- First Item
+- Second Item
+- Third Item"
+        );
+    }
+
+    private async void addOl() {
+        await insertAtSelectionStart(
+@"1. First Item
+2. Second Item
+3. Third Item"
+        );
+    }
+    #endregion
+
+    #region Source Text Modification
+    private ElementReference editElement;
+    private ElementReference previewElement;
+    private async Task<Range> GetSelection() {
+        
+        int start = await js.InvokeAsync<int>("RpgNotes.Editor.GetSelectionStart", editElement);
+        int end   = await js.InvokeAsync<int>("RpgNotes.Editor.GetSelectionEnd", editElement);
+
+        return new Range(
+            new Index(start, false),
+            new Index(end, false)
+        );
+    }
+
+    private async Task insertAtSelectionStart(string insertion) {
+        await this.js.InvokeVoidAsync("RpgNotes.Editor.InsertAtCursor", this.editElement, insertion);
+    }
+
+    private async Task surroundSelection(string begin, string end) {
+        await this.js.InvokeVoidAsync("RpgNotes.Editor.SurroundText", this.editElement, begin, end);
+    }
+    #endregion
+}

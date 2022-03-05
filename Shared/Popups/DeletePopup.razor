@@ -1,0 +1,61 @@
+@using System.IO
+@inject IJSRuntime js
+
+<Modal @ref=modal>
+    <header class="w3-container">
+        <h3>Delete</h3>
+    </header>
+    <div class="w3-padding">
+        <p>
+            Are you sure you want to delete the resource @(name)?
+        </p>
+        @if (!string.IsNullOrEmpty(name)) {
+        <input @ref="confirmationInput" type="text" class="w3-input w3-round" @bind=confirm_str @bind:event="oninput" placeholder="Type @(name) to confirm">
+        <p>
+            Type "@(name)" above to confirm.
+        </p>
+        }
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancel>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">   
+            @if (string.IsNullOrEmpty(name) || confirm_str == name) {  
+            <button class="w3-button w3-round ok" @onclick=confirm>Confirm</button>
+            }
+        </div>
+    </footer>
+</Modal>
+
+@code {
+
+    private string name;
+    private string confirm_str;
+    private Modal modal;
+
+    private Action confirmAction;
+
+    public void Delete(string name, Action OnConfirm) {
+        this.name = name;
+        confirm_str = null;
+        this.confirmAction = OnConfirm;
+        // this.js.InvokeVoidAsync("RpgNotes.SetFocus", this.confirmationInput); // TODO this doesn't work if modal is display: none
+        this.modal?.SetVisibility(true);
+        StateHasChanged();
+    }
+
+    private ElementReference confirmationInput;
+
+    private void cancel() {
+        this.modal?.SetVisibility(false);
+    }
+
+    private void confirm() {
+        if (string.IsNullOrEmpty(name) || confirm_str == name) {
+            if (confirmAction != null)
+                confirmAction.Invoke();
+            this.modal?.SetVisibility(false);
+        }
+    }
+}

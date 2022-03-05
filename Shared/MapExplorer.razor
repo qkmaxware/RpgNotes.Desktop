@@ -1,0 +1,159 @@
+@using System.IO
+@using System.Text.Json
+@using System.Text.RegularExpressions
+
+<div style="height: 100%;">
+    <div class="w3-row" style="height: 3em;">
+        <div class="w3-col w3-right" style="width: 4em">
+            <button class="w3-button ok w3-border-bottom" style="text-align: center; width: 100%;" @onclick=newMap>&plus;</button>
+        </div>
+        <div class="w3-rest">
+            <input type="text" placeholder="filter (.*)" class="w3-input w3-margin-bottom" @bind=filter>
+        </div>
+    </div>
+    <div style="height: calc(100% - 3em); overflow: auto;">
+        <ul class="w3-ul no-lines">
+            @if (this.maps != null) {
+                foreach (var map in this.maps) {
+                    var self = map;
+                    if (map != null && map.Name != null && (this.Filter == null || this.Filter.IsMatch(map.Name))) {
+                        <li class="button" @ondblclick=@(() => OpenFile(self)) @oncontextmenu=@((args) => OpenFileContext(args, self)) @oncontextmenu:preventDefault="true">@map.Name</li>
+                    }
+                }
+            }
+        </ul>
+    </div>
+</div>
+
+<Modal @ref=newMapModal>
+    <header class="w3-container">
+        <h3>New Map</h3>
+    </header>
+    <div class="w3-padding">
+        <h4>Name</h4>
+        <input type="text" class="w3-input" @bind=customMapName placeholder="map name">
+        <h4>Base Layer</h4>
+        <select class="w3-input" @bind="customMapBaseLayer">
+            <option></option>
+            @foreach (var file in new DirectoryInfo(this.Directory).GetImages()) {
+                <option value="@file.FullName">@file.Name</option>
+            }
+        </select>
+    </div>
+    <footer class="w3-row w3-padding">
+        <div class="w3-col s6">
+            <button class="w3-button w3-round error" @onclick=cancelNewMap>Cancel</button>
+        </div>
+        <div class="w3-col s6 w3-right-align">     
+            @if (!string.IsNullOrEmpty(customMapName) && !string.IsNullOrEmpty(customMapBaseLayer)) {
+                <button class="w3-button w3-round ok" @onclick=saveNewMap>Confirm</button>
+            }
+        </div>
+    </footer>
+</Modal>
+
+@code {
+    [Parameter] public string Directory {get; set;}
+    [Parameter] public Action<MouseEventArgs, Map> OnRightClick {get; set;}
+    [Parameter] public Action<Map> OnFileDbClick {get; set;}
+
+    private List<Map> maps = null;
+    protected override void OnInitialized() {
+        refreshMaps();
+    }
+
+    public void OpenFileContext(MouseEventArgs args, Map map) {
+        OnRightClick?.Invoke(args, map);
+    }
+    public void OpenFile(Map map) {
+        OnFileDbClick?.Invoke(map);
+    }
+
+    private string filter {
+        get => regexStr;
+        set {
+            regexStr = value;
+            if (string.IsNullOrEmpty(regexStr)) {
+                this.Filter = allFilter;
+            } else {
+                try {
+                    this.Filter = new Regex(regexStr, RegexOptions.IgnoreCase);
+                } catch {
+                    this.Filter = noneFilter;
+                }
+            }
+        }
+    }
+    private string regexStr;
+    private static Regex allFilter = new Regex(".*");
+    private static Regex noneFilter = new Regex("(?!x)x");
+    public Regex Filter {get; private set;}
+
+    private Modal newMapModal;
+
+    private string customMapName;
+    private string customMapBaseLayer;
+
+    private void newMap() {
+        customMapName = null;
+        customMapBaseLayer = null;
+        newMapModal?.SetVisibility(true);
+    }
+    private string addTh(int count) {
+        if (count == 0)
+            return count.ToString() + "th";
+        else if (count == 1)
+            return count.ToString() + "st";
+        else if (count == 2) 
+            return count.ToString() + "nd";
+        else if (count == 3)
+            return count.ToString() + "rd";
+        else 
+            return count.ToString() + "th";
+    }
+
+    private void cancelNewMap() {
+        this.newMapModal?.SetVisibility(false);
+    }
+    private void saveNewMap() {
+        if (string.IsNullOrEmpty(customMapBaseLayer))
+            return;
+
+        var saveDir = Path.Combine(this.Directory, ".data", ".maps");
+        System.IO.Directory.CreateDirectory(saveDir);
+        var name = customMapName.Trim();
+        var saveFile = Path.Combine(saveDir, name + ".json");
+        var map = new Map{
+            Name = name,
+            SourceFile = new FileInfo(saveFile),
+            BaseLayers = new List<ImageLayer> {
+                new ImageLayer {
+                    ImagePath = Path.GetRelativePath(this.Directory, customMapBaseLayer)
+                }
+            },
+            Features = new FeatureCollection()
+        };
+        System.IO.File.WriteAllText(saveFile, JsonSerializer.Serialize(map));
+        this.newMapModal?.SetVisibility(false);
+
+        this.maps.Add(map);
+    }
+
+    private void refreshMaps() {
+        var dir = new DirectoryInfo(this.Directory);
+        if (dir.Exists) {
+            this.maps = new List<Map>();
+            foreach (var json in dir.GetJsonAssets()) {
+                try {
+                    var map = JsonSerializer.Deserialize<Map>(System.IO.File.ReadAllText(json.FullName));
+                    if (maps != null && (map.BaseLayers != null || map.Features != null)) {
+                        map.SourceFile = json;
+                        map.Name = Path.GetFileNameWithoutExtension(json.Name);
+                        this.maps.Add(map);
+                    }
+                } catch {}
+            }
+        }
+    }
+
+}
